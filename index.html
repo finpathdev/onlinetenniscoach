@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Tennis Coach</title>
+<style>
+  :root {
+    --green: #1e5631;
+    --lime: #c4e538;
+    --dark: #0d1b0f;
+    --card: #16241a;
+    --text: #eef5e9;
+    --muted: #9bb09f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--dark);
+    color: var(--text);
+  }
+  header {
+    padding: 24px 20px;
+    text-align: center;
+    border-bottom: 1px solid #223a26;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    letter-spacing: -0.5px;
+  }
+  header p {
+    color: var(--muted);
+    margin: 6px 0 0;
+    font-size: 0.95rem;
+  }
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid #223a26;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .upload-zone {
+    border: 2px dashed #2f4f35;
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--lime);
+    background: #1a2e1e;
+  }
+  .upload-zone p { color: var(--muted); margin: 8px 0 0; font-size: 0.9rem; }
+  input[type=file] { display: none; }
+  button {
+    background: var(--lime);
+    color: #15260f;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.secondary {
+    background: transparent;
+    border: 1px solid #2f4f35;
+    color: var(--text);
+  }
+  .video-wrap {
+    position: relative;
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    background: black;
+  }
+  video, canvas {
+    width: 100%;
+    display: block;
+  }
+  canvas {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-top: 14px;
+  }
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .stat {
+    background: #101d12;
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat .val { font-size: 1.4rem; font-weight: 700; color: var(--lime); }
+  .stat .label { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+  #feedbackList {
+    list-style: none;
+    padding: 0;
+    margin: 14px 0 0;
+  }
+  #feedbackList li {
+    background: #101d12;
+    border-left: 3px solid var(--lime);
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 0.88rem;
+  }
+  #feedbackList li .time {
+    color: var(--lime);
+    font-weight: 600;
+    margin-right: 8px;
+    cursor: pointer;
+  }
+  .popup {
+    position: absolute;
+    background: rgba(13, 27, 15, 0.92);
+    border: 1px solid var(--lime);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    color: var(--lime);
+    pointer-events: none;
+    display: none;
+    max-width: 200px;
+  }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    padding: 30px 20px;
+  }
+  .badge {
+    display: inline-block;
+    background: #223a26;
+    color: var(--lime);
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 20px;
+    margin-left: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎾 AI Tennis Coach</h1>
+  <p>Upload your footage. Get shot-by-shot feedback. All in your browser.</p>
+</header>
+
+<main>
+
+  <div class="card">
+    <div class="upload-zone" id="uploadZone">
+      <strong>Click or drop a video here</strong>
+      <p>MP4, MOV, or WebM &middot; side-on angle works best</p>
+      <input type="file" id="fileInput" accept="video/*">
+    </div>
+  </div>
+
+  <div class="card" id="reviewCard" style="display:none;">
+    <div class="video-wrap" id="videoWrap">
+      <video id="video" controls playsinline></video>
+      <canvas id="overlay"></canvas>
+      <div class="popup" id="popup"></div>
+    </div>
+
+    <div class="controls">
+      <button id="analyzeBtn">▶ Analyze Video</button>
+      <button class="secondary" id="resetBtn">Upload Different Video</button>
+      <label class="toggle">
+        <input type="checkbox" id="popupToggle" checked>
+        Show coaching pop-ups
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="skeletonToggle" checked>
+        Show pose skeleton
+      </label>
+    </div>
+
+    <div id="analysisStatus" style="margin-top:10px; color: var(--muted); font-size: 0.85rem;"></div>
+
+    <div class="stats-grid" id="statsGrid" style="display:none;">
+      <div class="stat"><div class="val" id="statShots">0</div><div class="label">Shots Detected</div></div>
+      <div class="stat"><div class="val" id="statAvgSpeed">0</div><div class="label">Avg Speed (mph est.)</div></div>
+      <div class="stat"><div class="val" id="statTopSpeed">0</div><div class="label">Top Speed (mph est.)</div></div>
+      <div class="stat"><div class="val" id="statMain">-</div><div class="label">Most Used Shot</div></div>
+    </div>
+
+    <ul id="feedbackList"></ul>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">How this works <span class="badge">v0.1 prototype</span></h3>
+    <p style="color: var(--muted); font-size: 0.88rem; line-height:1.5;">
+      This runs pose estimation directly in your browser using MediaPipe (free, open-source, nothing uploaded to a server).
+      Shot type, speed, and feedback in this version use simplified estimates based on body motion since precise ball-tracking
+      requires a dedicated model we'll add next. Treat current speed numbers as rough estimates, not radar-gun accurate, until
+      the ball-tracking model is added.
+    </p>
+  </div>
+
+</main>
+
+<footer>AI Tennis Coach — built with MediaPipe Pose, runs 100% client-side.</footer>
+
+<script type="module">
+import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+const fileInput = document.getElementById('fileInput');
+const uploadZone = document.getElementById('uploadZone');
+const reviewCard = document.getElementById('reviewCard');
+const video = document.getElementById('video');
+const overlay = document.getElementById('overlay');
+const ctx = overlay.getContext('2d');
+const popup = document.getElementById('popup');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const resetBtn = document.getElementById('resetBtn');
+const popupToggle = document.getElementById('popupToggle');
+const skeletonToggle = document.getElementById('skeletonToggle');
+const statsGrid = document.getElementById('statsGrid');
+const feedbackList = document.getElementById('feedbackList');
+const analysisStatus = document.getElementById('analysisStatus');
+
+let poseLandmarker = null;
+let drawingUtils = null;
+let events = []; // {time, type, speedEst, note}
+let analyzing = false;
+let rafId = null;
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) loadVideo(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) loadVideo(fileInput.files[0]);
+});
+
+function loadVideo(file) {
+  const url = URL.createObjectURL(file);
+  video.src = url;
+  reviewCard.style.display = 'block';
+  statsGrid.style.display = 'none';
+  feedbackList.innerHTML = '';
+  events = [];
+  analysisStatus.textContent = '';
+  video.onloadedmetadata = () => {
+    overlay.width = video.videoWidth;
+    overlay.height = video.videoHeight;
+  };
+  reviewCard.scrollIntoView({ behavior: 'smooth' });
+}
+
+resetBtn.addEventListener('click', () => {
+  reviewCard.style.display = 'none';
+  fileInput.value = '';
+  video.pause();
+  video.src = '';
+});
+
+async function ensurePoseModel() {
+  if (poseLandmarker) return;
+  analysisStatus.textContent = 'Loading pose model (first time only)...';
+  const vision = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  );
+  poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+      delegate: "GPU"
+    },
+    runningMode: "VIDEO",
+    numPoses: 1
+  });
+  drawingUtils = new DrawingUtils(ctx);
+  analysisStatus.textContent = 'Model loaded. Analyzing...';
+}
+
+analyzeBtn.addEventListener('click', async () => {
+  if (!video.src) return;
+  analyzeBtn.disabled = true;
+  analyzing = true;
+  events = [];
+  feedbackList.innerHTML = '';
+  await ensurePoseModel();
+
+  video.currentTime = 0;
+  video.muted = true;
+  await video.play();
+
+  let lastWristY = null;
+  let lastWristX = null;
+  let lastTime = 0;
+  let cooldown = 0;
+  let speeds = [];
+  let shotCounts = {};
+
+  function loop() {
+    if (video.paused || video.ended) {
+      finishAnalysis(speeds, shotCounts);
+      return;
+    }
+    const ts = performance.now();
+    const result = poseLandmarker.detectForVideo(video, ts);
+
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+    if (result.landmarks && result.landmarks.length > 0) {
+      const lm = result.landmarks[0];
+
+      if (skeletonToggle.checked) {
+        drawingUtils.drawLandmarks(lm, { radius: 3, color: '#c4e538' });
+        drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#c4e538', lineWidth: 2 });
+      }
+
+      // Right wrist = landmark 16 (rough proxy for racket hand motion)
+      const wrist = lm[16];
+      const shoulder = lm[12];
+      const hip = lm[24];
+
+      const wx = wrist.x * overlay.width;
+      const wy = wrist.y * overlay.height;
+      const dt = video.currentTime - lastTime;
+
+      if (lastWristY !== null && dt > 0 && cooldown <= 0) {
+        const dx = wx - lastWristX;
+        const dy = wy - lastWristY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const speedPxPerSec = dist / dt;
+
+        // crude pixel-speed -> mph estimate, calibrated loosely against frame width as a proxy for court scale
+        const estMph = Math.min(95, (speedPxPerSec / overlay.width) * 60);
+
+        // detect a "swing peak": fast wrist motion crossing past the shoulder line horizontally
+        if (speedPxPerSec > overlay.width * 1.2) {
+          cooldown = 0.6; // seconds, avoid double-counting same swing
+
+          const shotType = classifyShot(wrist, shoulder, hip, dx, dy);
+          shotCounts[shotType] = (shotCounts[shotType] || 0) + 1;
+          speeds.push(estMph);
+
+          const note = generateFeedback(shotType, wrist, shoulder, hip);
+          events.push({ time: video.currentTime, type: shotType, speedEst: Math.round(estMph), note });
+        }
+      }
+
+      lastWristX = wx;
+      lastWristY = wy;
+      lastTime = video.currentTime;
+    }
+
+    if (cooldown > 0) cooldown -= 1/30;
+
+    // show popup for any event near current time
+    if (popupToggle.checked) {
+      const active = events.find(e => Math.abs(e.time - video.currentTime) < 0.15);
+      if (active) {
+        popup.style.display = 'block';
+        popup.style.left = '12px';
+        popup.style.top = '12px';
+        popup.textContent = `${active.type} • ~${active.speedEst} mph — ${active.note}`;
+      } else {
+        popup.style.display = 'none';
+      }
+    } else {
+      popup.style.display = 'none';
+    }
+
+    rafId = requestAnimationFrame(loop);
+  }
+
+  rafId = requestAnimationFrame(loop);
+});
+
+function classifyShot(wrist, shoulder, hip, dx, dy) {
+  const aboveShoulder = wrist.y < shoulder.y;
+  const movingUp = dy < 0;
+  if (aboveShoulder && movingUp) return 'Serve / Overhead';
+  if (dx > 0 && wrist.x > hip.x) return 'Forehand';
+  if (dx < 0) return 'Backhand';
+  return 'Volley';
+}
+
+function generateFeedback(type, wrist, shoulder, hip) {
+  // simple rule-based notes as placeholders — refine once ball tracking is added
+  const contactHeight = hip.y - wrist.y;
+  if (type === 'Serve / Overhead') {
+    return contactHeight > 0.3 ? 'good extension on contact' : 'try contacting the ball a bit higher';
+  }
+  if (type === 'Forehand') {
+    return wrist.x - hip.x > 0.15 ? 'solid contact point out in front' : 'contact looks a little late/close to body';
+  }
+  if (type === 'Backhand') {
+    return 'check follow-through extension';
+  }
+  return 'compact swing detected';
+}
+
+function finishAnalysis(speeds, shotCounts) {
+  cancelAnimationFrame(rafId);
+  analyzing = false;
+  analyzeBtn.disabled = false;
+  popup.style.display = 'none';
+  analysisStatus.textContent = `Analysis complete — ${events.length} shots detected.`;
+
+  statsGrid.style.display = 'grid';
+  document.getElementById('statShots').textContent = events.length;
+  document.getElementById('statAvgSpeed').textContent = speeds.length ? Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length) : 0;
+  document.getElementById('statTopSpeed').textContent = speeds.length ? Math.round(Math.max(...speeds)) : 0;
+  const mainShot = Object.entries(shotCounts).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('statMain').textContent = mainShot ? mainShot[0] : '-';
+
+  feedbackList.innerHTML = '';
+  events.forEach(e => {
+    const li = document.createElement('li');
+    const m = Math.floor(e.time / 60);
+    const s = Math.floor(e.time % 60).toString().padStart(2, '0');
+    li.innerHTML = `<span class="time">${m}:${s}</span><strong>${e.type}</strong> — ~${e.speedEst} mph — ${e.note}`;
+    li.querySelector('.time').addEventListener('click', () => {
+      video.currentTime = e.time;
+      video.pause();
+    });
+    feedbackList.appendChild(li);
+  });
+}
+</script>
+
+</body>
+</html>
