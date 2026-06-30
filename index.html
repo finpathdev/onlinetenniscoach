@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Tennis Coach</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%230d1b0f'/%3E%3Ccircle cx='50' cy='50' r='38' fill='%23c4e538'/%3E%3Cpath d='M14 50 C 30 25, 70 25, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3Cpath d='M14 50 C 30 75, 70 75, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3C/svg%3E">
 <style>
   :root {
     --green: #1e5631;
@@ -42,6 +43,15 @@
     margin: 0;
     font-size: 1.6rem;
     letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .app-logo {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
   }
   header p {
     color: var(--muted);
@@ -325,7 +335,15 @@
 })();
 </script>
 <header>
-  <h1>🎾 AI Tennis Coach</h1>
+  <h1>
+    <svg class="app-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="46" fill="#0d1b0f" stroke="#c4e538" stroke-width="2"/>
+      <circle cx="50" cy="50" r="36" fill="#c4e538"/>
+      <path d="M14 50 C 30 25, 70 25, 86 50" stroke="#1e5631" stroke-width="4" fill="none"/>
+      <path d="M14 50 C 30 75, 70 75, 86 50" stroke="#1e5631" stroke-width="4" fill="none"/>
+    </svg>
+    AI Tennis Coach
+  </h1>
   <p>Upload your footage. Get shot-by-shot feedback. All in your browser.</p>
 </header>
 
