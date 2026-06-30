@@ -19,6 +19,19 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--dark);
     color: var(--text);
+    position: relative;
+  }
+  #rippleBg {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+  }
+  header, .auth-bar, main, footer {
+    position: relative;
+    z-index: 1;
   }
   header {
     padding: 24px 20px;
@@ -41,7 +54,8 @@
     padding: 20px;
   }
   .card {
-    background: var(--card);
+    background: rgba(22, 36, 26, 0.82);
+    backdrop-filter: blur(6px);
     border: 1px solid #223a26;
     border-radius: 14px;
     padding: 20px;
@@ -167,29 +181,227 @@
     border-radius: 20px;
     margin-left: 8px;
   }
+  .calib-banner {
+    background: #1a2e1e;
+    border: 1px solid var(--lime);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+    font-size: 0.85rem;
+  }
+  .calib-banner select, .calib-banner input[type=number] {
+    background: #0d1b0f;
+    border: 1px solid #2f4f35;
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin: 0 6px;
+  }
+  .calib-points {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .calib-dot {
+    position: absolute;
+    width: 10px; height: 10px;
+    background: var(--lime);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  #calibCanvas {
+    cursor: crosshair;
+  }
+  .auth-bar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid #223a26;
+    font-size: 0.85rem;
+  }
+  .auth-bar input {
+    background: #16241a;
+    border: 1px solid #2f4f35;
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+  }
+  .auth-bar .user-email {
+    color: var(--lime);
+  }
+  .session-item {
+    background: #101d12;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.85rem;
+  }
+  .session-item .meta { color: var(--muted); font-size: 0.78rem; }
 </style>
 </head>
 <body>
 
+<canvas id="rippleBg"></canvas>
+
+<script>
+(function() {
+  const canvas = document.getElementById('rippleBg');
+  const c = canvas.getContext('2d');
+  let ripples = [];
+  let w, h;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function spawnRipple() {
+    ripples.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: 0,
+      maxR: 140 + Math.random() * 220,
+      speed: 0.4 + Math.random() * 0.5,
+      alpha: 0.16 + Math.random() * 0.1,
+      hue: Math.random() > 0.5 ? 'lime' : 'green'
+    });
+  }
+
+  // seed a few ripples at staggered ages so it doesn't look empty on load
+  for (let i = 0; i < 6; i++) {
+    ripples.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 200,
+      maxR: 140 + Math.random() * 220,
+      speed: 0.4 + Math.random() * 0.5,
+      alpha: 0.16 + Math.random() * 0.1,
+      hue: Math.random() > 0.5 ? 'lime' : 'green'
+    });
+  }
+
+  let frame = 0;
+  function loop() {
+    frame++;
+    c.clearRect(0, 0, w, h);
+
+    // subtle base gradient wash for a "water" feel
+    const grad = c.createRadialGradient(w*0.5, h*0.3, 0, w*0.5, h*0.3, Math.max(w,h)*0.8);
+    grad.addColorStop(0, 'rgba(30, 86, 49, 0.12)');
+    grad.addColorStop(1, 'rgba(13, 27, 15, 0)');
+    c.fillStyle = grad;
+    c.fillRect(0, 0, w, h);
+
+    ripples.forEach(rp => {
+      rp.r += rp.speed;
+      const progress = rp.r / rp.maxR;
+      const fade = Math.max(0, 1 - progress);
+      const color = rp.hue === 'lime' ? `196, 229, 56` : `30, 86, 49`;
+      c.beginPath();
+      c.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+      c.strokeStyle = `rgba(${color}, ${rp.alpha * fade})`;
+      c.lineWidth = 1.4;
+      c.stroke();
+    });
+
+    ripples = ripples.filter(rp => rp.r < rp.maxR);
+    if (frame % 70 === 0) spawnRipple();
+
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+</script>
 <header>
   <h1>🎾 AI Tennis Coach</h1>
   <p>Upload your footage. Get shot-by-shot feedback. All in your browser.</p>
 </header>
 
+<div class="auth-bar" id="authBar">
+  <span id="loggedOutView">
+    <input type="email" id="authEmail" placeholder="email" style="width:140px;">
+    <input type="password" id="authPassword" placeholder="password" style="width:110px;">
+    <button id="signInBtn" style="padding:6px 12px; font-size:0.82rem;">Sign In</button>
+    <button class="secondary" id="signUpBtn" style="padding:6px 12px; font-size:0.82rem;">Sign Up</button>
+  </span>
+  <span id="loggedInView" style="display:none;">
+    <span class="user-email" id="userEmailLabel"></span>
+    <button class="secondary" id="signOutBtn" style="padding:6px 12px; font-size:0.82rem;">Sign Out</button>
+  </span>
+</div>
+
+<div class="auth-bar" id="navBar" style="justify-content:center; gap: 4px;">
+  <button class="secondary" id="navAnalyze">🎾 Analyze</button>
+  <button class="secondary" id="navDashboard">📈 Dashboard</button>
+  <button class="secondary" id="navCommunity">🌍 Community</button>
+</div>
+
 <main>
+
+<div id="tabAnalyze">
 
   <div class="card">
     <div class="upload-zone" id="uploadZone">
       <strong>Click or drop a video here</strong>
-      <p>MP4, MOV, or WebM &middot; side-on angle works best</p>
+      <p>MP4, MOV, or WebM &middot; see filming tips below for best results</p>
       <input type="file" id="fileInput" accept="video/*">
+    </div>
+    <div style="margin-top:16px; font-size: 0.85rem; color: var(--muted); line-height: 1.6;">
+      <strong style="color: var(--text);">📹 For the most accurate analysis, film like this:</strong>
+      <ul style="margin: 8px 0 0; padding-left: 20px;">
+        <li><strong>Camera angle:</strong> side-on to the court (standing at the net post or fence, facing the baseline), not from directly behind the baseline.</li>
+        <li><strong>Camera position:</strong> mount on a tripod or steady surface — handheld footage makes ball tracking much less reliable.</li>
+        <li><strong>Distance:</strong> far enough back that a full court line (baseline or singles sideline) is visible in frame — you'll use it to calibrate speed.</li>
+        <li><strong>Lighting:</strong> film in good daylight or well-lit conditions; avoid heavy shadows across the court.</li>
+        <li><strong>Clip length:</strong> upload short clips (a single rally or a few shots) rather than a full match — keeps analysis fast and accurate.</li>
+        <li><strong>Background:</strong> avoid courts with yellow-green surfaces or backgrounds that closely match the ball color, since this can confuse ball tracking.</li>
+      </ul>
     </div>
   </div>
 
   <div class="card" id="reviewCard" style="display:none;">
+
+    <div class="calib-banner" id="calibBanner">
+      <strong>📏 Calibrate for real speed (one-time per video)</strong>
+      <p style="color: var(--muted); margin: 8px 0;">
+        Pick a court line you can see clearly, enter its real-world length, then click both ends of it on the paused video frame below.
+        This lets the app convert pixel motion into real mph.
+      </p>
+      <div>
+        Reference line:
+        <select id="refLine">
+          <option value="78">Full baseline-to-baseline (78 ft)</option>
+          <option value="36">Singles court width (27 ft)</option>
+          <option value="21">Service box width (13.5 ft)</option>
+          <option value="custom">Custom distance</option>
+        </select>
+        <span id="customDistWrap" style="display:none;">
+          <input type="number" id="customDist" placeholder="feet" style="width:70px;">
+        </span>
+      </div>
+      <div class="calib-points">
+        Points placed: <span id="pointCount">0</span> / 2
+        <button class="secondary" id="resetCalib" style="margin-left:10px; padding: 4px 10px; font-size: 0.78rem;">Reset points</button>
+        <button class="secondary" id="skipCalib" style="margin-left:6px; padding: 4px 10px; font-size: 0.78rem;">Skip (use rough estimate)</button>
+      </div>
+    </div>
+
     <div class="video-wrap" id="videoWrap">
       <video id="video" controls playsinline></video>
       <canvas id="overlay"></canvas>
+      <canvas id="ballCanvas"></canvas>
       <div class="popup" id="popup"></div>
     </div>
 
@@ -210,23 +422,71 @@
 
     <div class="stats-grid" id="statsGrid" style="display:none;">
       <div class="stat"><div class="val" id="statShots">0</div><div class="label">Shots Detected</div></div>
-      <div class="stat"><div class="val" id="statAvgSpeed">0</div><div class="label">Avg Speed (mph est.)</div></div>
-      <div class="stat"><div class="val" id="statTopSpeed">0</div><div class="label">Top Speed (mph est.)</div></div>
+      <div class="stat"><div class="val" id="statAvgSpeed">0</div><div class="label">Avg Ball Speed (mph)</div></div>
+      <div class="stat"><div class="val" id="statTopSpeed">0</div><div class="label">Top Ball Speed (mph)</div></div>
       <div class="stat"><div class="val" id="statMain">-</div><div class="label">Most Used Shot</div></div>
+    </div>
+
+    <div id="publishBox" style="display:none; margin-top:14px; background:#101d12; border-radius:10px; padding:14px;">
+      <label class="toggle" style="margin-bottom:8px;">
+        <input type="checkbox" id="publishToggle">
+        Share this session publicly on the Community page
+      </label>
+      <input type="text" id="publishCaption" placeholder="Add a caption (optional)" style="width:100%; padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.85rem; display:none; margin-bottom:8px;">
+      <button id="confirmPublishBtn" style="padding:6px 12px; font-size:0.82rem;">Save sharing choice</button>
+      <span id="publishStatus" style="margin-left:8px; font-size:0.78rem; color:var(--muted);"></span>
     </div>
 
     <ul id="feedbackList"></ul>
   </div>
 
+  <div class="card" id="historyCard" style="display:none;">
+    <h3 style="margin-top:0;">📊 Your saved sessions</h3>
+    <div id="historyList" style="font-size: 0.85rem; color: var(--muted);">No sessions yet.</div>
+  </div>
+
   <div class="card">
-    <h3 style="margin-top:0;">How this works <span class="badge">v0.1 prototype</span></h3>
+    <h3 style="margin-top:0;">How this works <span class="badge">v0.3 prototype</span></h3>
     <p style="color: var(--muted); font-size: 0.88rem; line-height:1.5;">
-      This runs pose estimation directly in your browser using MediaPipe (free, open-source, nothing uploaded to a server).
-      Shot type, speed, and feedback in this version use simplified estimates based on body motion since precise ball-tracking
-      requires a dedicated model we'll add next. Treat current speed numbers as rough estimates, not radar-gun accurate, until
-      the ball-tracking model is added.
+      Pose tracking runs via MediaPipe. Ball tracking uses color + motion detection tuned for
+      standard yellow-green tennis balls (works best with good lighting and a ball that contrasts
+      against the court/background). Speed is converted to real mph using the calibration step,
+      where you mark a known court distance once per video. Without calibration, speed falls back
+      to a rough relative estimate. This is a lightweight CV approach, not a trained ball-detection
+      model — it can lose the ball on fast blurred frames or busy backgrounds, and accuracy improves
+      a lot with a clear side-on camera angle.
     </p>
   </div>
+
+</div>
+
+<div id="tabDashboard" style="display:none;">
+  <div class="card" id="dashboardLoggedOut">
+    <p style="color: var(--muted);">Sign in to see your progress dashboard.</p>
+  </div>
+  <div id="dashboardContent" style="display:none;">
+    <div class="card">
+      <h3 style="margin-top:0;">📈 Speed trend over time</h3>
+      <div id="speedChartWrap"><svg id="speedChart" viewBox="0 0 600 200" style="width:100%; height:auto;"></svg></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">🎯 Shot mix</h3>
+      <div id="shotMixWrap" style="font-size:0.88rem;"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">🏋️ Suggested drills</h3>
+      <div id="drillSuggestions" style="font-size:0.88rem; line-height:1.7;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="tabCommunity" style="display:none;">
+  <div class="card">
+    <h3 style="margin-top:0;">🌍 Community feed</h3>
+    <p style="color: var(--muted); font-size:0.85rem;">Sessions players have chosen to share publicly.</p>
+    <div id="communityFeed" style="margin-top:14px;">Loading...</div>
+  </div>
+</div>
 
 </main>
 
@@ -234,13 +494,330 @@
 
 <script type="module">
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const fileInput = document.getElementById('fileInput');
+// ---------- Supabase setup ----------
+// Replace these two values with your own project's URL and anon (public) key,
+// found in Supabase dashboard → Project Settings → API.
+const SUPABASE_URL = "https://stmksyzukrtiwlglwlpt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0bWtzeXp1a3J0aXdsZ2x3bHB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NzcyMjMsImV4cCI6MjA5ODM1MzIyM30.RJSU8Xxq03NRgab8fd0OAdeifXGIR3SBc7izLOQ1Qz4";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const authEmail = document.getElementById('authEmail');
+const authPassword = document.getElementById('authPassword');
+const signInBtn = document.getElementById('signInBtn');
+const signUpBtn = document.getElementById('signUpBtn');
+const signOutBtn = document.getElementById('signOutBtn');
+const loggedOutView = document.getElementById('loggedOutView');
+const loggedInView = document.getElementById('loggedInView');
+const userEmailLabel = document.getElementById('userEmailLabel');
+const historyCard = document.getElementById('historyCard');
+const historyList = document.getElementById('historyList');
+
+let currentUser = null;
+
+async function refreshAuthUI() {
+  const { data: { user } } = await supabase.auth.getUser();
+  currentUser = user;
+  if (user) {
+    loggedOutView.style.display = 'none';
+    loggedInView.style.display = 'inline';
+    userEmailLabel.textContent = user.email;
+    historyCard.style.display = 'block';
+    loadSessions();
+  } else {
+    loggedOutView.style.display = 'inline';
+    loggedInView.style.display = 'none';
+    historyCard.style.display = 'none';
+  }
+}
+
+signUpBtn.addEventListener('click', async () => {
+  const { error } = await supabase.auth.signUp({
+    email: authEmail.value,
+    password: authPassword.value
+  });
+  if (error) { alert(error.message); return; }
+  alert('Account created. Check your email if confirmation is required, then sign in.');
+});
+
+signInBtn.addEventListener('click', async () => {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: authEmail.value,
+    password: authPassword.value
+  });
+  if (error) { alert(error.message); return; }
+  refreshAuthUI();
+});
+
+signOutBtn.addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  refreshAuthUI();
+});
+
+async function loadSessions() {
+  if (!currentUser) return;
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    historyList.textContent = 'Could not load sessions: ' + error.message;
+    return;
+  }
+  if (!data || data.length === 0) {
+    historyList.textContent = 'No sessions yet — analyze a video and it will be saved here.';
+    return;
+  }
+  historyList.innerHTML = '';
+  data.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'session-item';
+    const date = new Date(s.created_at).toLocaleString();
+    div.innerHTML = `
+      <span><strong>${s.shot_count} shots</strong> &middot; avg ${s.avg_speed} mph &middot; top ${s.top_speed} mph &middot; mostly ${s.main_shot}</span>
+      <span class="meta">${date}</span>
+    `;
+    historyList.appendChild(div);
+  });
+}
+
+let lastSavedSessionId = null;
+
+async function saveSessionToSupabase(summary) {
+  if (!currentUser) return; // not logged in, skip silently
+  const { data, error } = await supabase.from('sessions').insert({
+    user_id: currentUser.id,
+    shot_count: summary.shotCount,
+    avg_speed: summary.avgSpeed,
+    top_speed: summary.topSpeed,
+    main_shot: summary.mainShot,
+    events: summary.events,
+    is_public: false,
+    caption: ''
+  }).select().single();
+
+  if (error) {
+    console.error('Save failed:', error.message);
+  } else {
+    lastSavedSessionId = data.id;
+    loadSessions();
+  }
+}
+
+async function updatePublishStatus() {
+  if (!lastSavedSessionId) return;
+  const isPublic = document.getElementById('publishToggle').checked;
+  const caption = document.getElementById('publishCaption').value;
+  const { error } = await supabase
+    .from('sessions')
+    .update({ is_public: isPublic, caption: caption })
+    .eq('id', lastSavedSessionId);
+  if (error) console.error('Publish update failed:', error.message);
+}
+
+refreshAuthUI();
+
+// ---------- Tab navigation ----------
+const tabAnalyze = document.getElementById('tabAnalyze');
+const tabDashboard = document.getElementById('tabDashboard');
+const tabCommunity = document.getElementById('tabCommunity');
+const navAnalyze = document.getElementById('navAnalyze');
+const navDashboard = document.getElementById('navDashboard');
+const navCommunity = document.getElementById('navCommunity');
+
+function showTab(tab) {
+  tabAnalyze.style.display = tab === 'analyze' ? 'block' : 'none';
+  tabDashboard.style.display = tab === 'dashboard' ? 'block' : 'none';
+  tabCommunity.style.display = tab === 'community' ? 'block' : 'none';
+  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'community') loadCommunityFeed();
+}
+navAnalyze.addEventListener('click', () => showTab('analyze'));
+navDashboard.addEventListener('click', () => showTab('dashboard'));
+navCommunity.addEventListener('click', () => showTab('community'));
+
+// ---------- Dashboard ----------
+const dashboardLoggedOut = document.getElementById('dashboardLoggedOut');
+const dashboardContent = document.getElementById('dashboardContent');
+
+async function renderDashboard() {
+  if (!currentUser) {
+    dashboardLoggedOut.style.display = 'block';
+    dashboardContent.style.display = 'none';
+    return;
+  }
+  dashboardLoggedOut.style.display = 'none';
+  dashboardContent.style.display = 'block';
+
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: true });
+
+  if (error || !data || data.length === 0) {
+    document.getElementById('speedChartWrap').innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">No sessions yet — analyze a video first.</p>';
+    document.getElementById('shotMixWrap').innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Nothing to show yet.</p>';
+    document.getElementById('drillSuggestions').innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Drill suggestions will appear once you have a few sessions logged.</p>';
+    return;
+  }
+
+  drawSpeedChart(data);
+  renderShotMix(data);
+  renderDrillSuggestions(data);
+}
+
+function drawSpeedChart(sessions) {
+  const svg = document.getElementById('speedChart');
+  const w = 600, h = 200, pad = 30;
+  const speeds = sessions.map(s => s.avg_speed || 0);
+  const maxSpeed = Math.max(...speeds, 10);
+  const stepX = (w - pad*2) / Math.max(1, sessions.length - 1);
+
+  let points = sessions.map((s, i) => {
+    const x = pad + i * stepX;
+    const y = h - pad - ((s.avg_speed || 0) / maxSpeed) * (h - pad*2);
+    return `${x},${y}`;
+  }).join(' ');
+
+  let dots = sessions.map((s, i) => {
+    const x = pad + i * stepX;
+    const y = h - pad - ((s.avg_speed || 0) / maxSpeed) * (h - pad*2);
+    return `<circle cx="${x}" cy="${y}" r="4" fill="#c4e538"></circle>`;
+  }).join('');
+
+  svg.innerHTML = `
+    <polyline points="${points}" fill="none" stroke="#c4e538" stroke-width="2"/>
+    ${dots}
+    <line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#2f4f35" stroke-width="1"/>
+  `;
+}
+
+function renderShotMix(sessions) {
+  const counts = {};
+  sessions.forEach(s => {
+    counts[s.main_shot] = (counts[s.main_shot] || 0) + 1;
+  });
+  const total = sessions.length;
+  const wrap = document.getElementById('shotMixWrap');
+  wrap.innerHTML = Object.entries(counts).map(([shot, count]) => {
+    const pct = Math.round((count / total) * 100);
+    return `
+      <div style="margin-bottom:8px;">
+        <div style="display:flex; justify-content:space-between; color:var(--muted); margin-bottom:3px;">
+          <span>${shot}</span><span>${pct}%</span>
+        </div>
+        <div style="background:#101d12; border-radius:6px; height:8px;">
+          <div style="background:#c4e538; height:8px; border-radius:6px; width:${pct}%;"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderDrillSuggestions(sessions) {
+  const issueCounts = {};
+  sessions.forEach(s => {
+    (s.events || []).forEach(e => {
+      const note = (e.note || '').toLowerCase();
+      if (note.includes('late') || note.includes('close to body')) issueCounts['late_contact'] = (issueCounts['late_contact']||0)+1;
+      if (note.includes('higher')) issueCounts['low_toss'] = (issueCounts['low_toss']||0)+1;
+      if (note.includes('follow-through')) issueCounts['follow_through'] = (issueCounts['follow_through']||0)+1;
+    });
+  });
+
+  const drillMap = {
+    late_contact: { title: 'Contact point drill', desc: 'Several shots show late/close contact. Try shadow swings focusing on meeting the ball further out in front, and feed-ball drills where a partner feeds balls slightly earlier than feels comfortable.' },
+    low_toss: { title: 'Serve toss & extension drill', desc: 'Your serve/overhead contact point is often low. Practice tossing against a wall, aiming to release the ball at full extension consistently before adding the swing back in.' },
+    follow_through: { title: 'Follow-through extension drill', desc: 'Backhand follow-through looks short across sessions. Try exaggerated full-extension shadow swings, finishing with the racket high over the opposite shoulder.' }
+  };
+
+  const sorted = Object.entries(issueCounts).sort((a,b) => b[1]-a[1]);
+  const box = document.getElementById('drillSuggestions');
+
+  if (sorted.length === 0) {
+    box.innerHTML = '<p style="color:var(--muted);">No recurring issues flagged yet — keep logging sessions to get personalized drills.</p>';
+    return;
+  }
+
+  box.innerHTML = sorted.slice(0, 3).map(([key, count]) => {
+    const d = drillMap[key];
+    if (!d) return '';
+    return `<div style="margin-bottom:14px; background:#101d12; padding:12px; border-radius:8px;">
+      <strong style="color:var(--lime);">${d.title}</strong> <span style="color:var(--muted); font-size:0.78rem;">(flagged ${count}x)</span>
+      <p style="margin:6px 0 0; color:var(--muted);">${d.desc}</p>
+    </div>`;
+  }).join('');
+}
+
+// ---------- Publish to community ----------
+const publishToggleEl = () => document.getElementById('publishToggle');
+const publishCaptionEl = () => document.getElementById('publishCaption');
+
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'publishToggle') {
+    publishCaptionEl().style.display = e.target.checked ? 'block' : 'none';
+  }
+});
+
+document.addEventListener('click', async (e) => {
+  if (e.target && e.target.id === 'confirmPublishBtn') {
+    await updatePublishStatus();
+    document.getElementById('publishStatus').textContent = 'Saved.';
+  }
+});
+
+async function loadCommunityFeed() {
+  const feed = document.getElementById('communityFeed');
+  feed.innerHTML = 'Loading...';
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('is_public', true)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    feed.innerHTML = `<p style="color:var(--muted);">Could not load community feed: ${error.message}</p>`;
+    return;
+  }
+  if (!data || data.length === 0) {
+    feed.innerHTML = '<p style="color:var(--muted);">No public sessions yet — be the first to share one from the Analyze tab.</p>';
+    return;
+  }
+
+  feed.innerHTML = data.map(s => {
+    const date = new Date(s.created_at).toLocaleDateString();
+    return `
+      <div class="session-item" style="display:block;">
+        <div style="display:flex; justify-content:space-between;">
+          <strong>${s.shot_count} shots &middot; avg ${s.avg_speed} mph &middot; top ${s.top_speed} mph</strong>
+          <span class="meta">${date}</span>
+        </div>
+        ${s.caption ? `<p style="margin:8px 0 0; color:var(--text);">${escapeHtml(s.caption)}</p>` : ''}
+        <p style="margin:6px 0 0; color:var(--muted); font-size:0.78rem;">Mostly ${s.main_shot}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+ = document.getElementById('fileInput');
 const uploadZone = document.getElementById('uploadZone');
 const reviewCard = document.getElementById('reviewCard');
 const video = document.getElementById('video');
 const overlay = document.getElementById('overlay');
 const ctx = overlay.getContext('2d');
+const ballCanvas = document.getElementById('ballCanvas');
+const ballCtx = ballCanvas.getContext('2d');
 const popup = document.getElementById('popup');
 const analyzeBtn = document.getElementById('analyzeBtn');
 const resetBtn = document.getElementById('resetBtn');
@@ -249,6 +826,75 @@ const skeletonToggle = document.getElementById('skeletonToggle');
 const statsGrid = document.getElementById('statsGrid');
 const feedbackList = document.getElementById('feedbackList');
 const analysisStatus = document.getElementById('analysisStatus');
+const calibBanner = document.getElementById('calibBanner');
+const refLineSelect = document.getElementById('refLine');
+const customDistWrap = document.getElementById('customDistWrap');
+const customDist = document.getElementById('customDist');
+const pointCountEl = document.getElementById('pointCount');
+const resetCalibBtn = document.getElementById('resetCalib');
+const skipCalibBtn = document.getElementById('skipCalib');
+const videoWrap = document.getElementById('videoWrap');
+
+let calibPoints = []; // [{x,y}, {x,y}] in canvas-pixel space
+let pxPerFoot = null; // calibration scale, null = not calibrated
+let calibSkipped = false;
+let calibDots = [];
+
+refLineSelect.addEventListener('change', () => {
+  customDistWrap.style.display = refLineSelect.value === 'custom' ? 'inline' : 'none';
+});
+
+function getRefFeet() {
+  if (refLineSelect.value === 'custom') return parseFloat(customDist.value) || null;
+  return parseFloat(refLineSelect.value);
+}
+
+resetCalibBtn.addEventListener('click', () => {
+  calibPoints = [];
+  pxPerFoot = null;
+  calibSkipped = false;
+  pointCountEl.textContent = '0';
+  calibDots.forEach(d => d.remove());
+  calibDots = [];
+});
+
+skipCalibBtn.addEventListener('click', () => {
+  calibSkipped = true;
+  pxPerFoot = null;
+  analysisStatus.textContent = 'Calibration skipped — speeds will be rough relative estimates only.';
+});
+
+overlay.addEventListener('click', (e) => {
+  if (calibPoints.length >= 2) return;
+  const rect = overlay.getBoundingClientRect();
+  const scaleX = overlay.width / rect.width;
+  const scaleY = overlay.height / rect.height;
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top) * scaleY;
+  calibPoints.push({ x, y });
+  pointCountEl.textContent = calibPoints.length;
+
+  const dot = document.createElement('div');
+  dot.className = 'calib-dot';
+  dot.style.left = ((e.clientX - rect.left)) + 'px';
+  dot.style.top = ((e.clientY - rect.top)) + 'px';
+  videoWrap.appendChild(dot);
+  calibDots.push(dot);
+
+  if (calibPoints.length === 2) {
+    const feet = getRefFeet();
+    if (!feet) {
+      analysisStatus.textContent = 'Enter a valid distance for your custom reference line.';
+      return;
+    }
+    const dx = calibPoints[1].x - calibPoints[0].x;
+    const dy = calibPoints[1].y - calibPoints[0].y;
+    const pxDist = Math.sqrt(dx*dx + dy*dy);
+    pxPerFoot = pxDist / feet;
+    calibSkipped = false;
+    analysisStatus.textContent = `Calibrated: ${pxPerFoot.toFixed(1)} px/ft. Ready to analyze.`;
+  }
+});
 
 let poseLandmarker = null;
 let drawingUtils = null;
@@ -276,9 +922,23 @@ function loadVideo(file) {
   feedbackList.innerHTML = '';
   events = [];
   analysisStatus.textContent = '';
+  calibPoints = [];
+  pxPerFoot = null;
+  calibSkipped = false;
+  pointCountEl.textContent = '0';
+  calibDots.forEach(d => d.remove());
+  calibDots = [];
+  document.getElementById('publishBox').style.display = 'none';
+  document.getElementById('publishToggle').checked = false;
+  document.getElementById('publishCaption').value = '';
+  document.getElementById('publishCaption').style.display = 'none';
+  document.getElementById('publishStatus').textContent = '';
+  lastSavedSessionId = null;
   video.onloadedmetadata = () => {
     overlay.width = video.videoWidth;
     overlay.height = video.videoHeight;
+    ballCanvas.width = video.videoWidth;
+    ballCanvas.height = video.videoHeight;
   };
   reviewCard.scrollIntoView({ behavior: 'smooth' });
 }
@@ -308,11 +968,62 @@ async function ensurePoseModel() {
   analysisStatus.textContent = 'Model loaded. Analyzing...';
 }
 
+// ---------- Ball tracking (color + motion based) ----------
+const hiddenSample = document.createElement('canvas');
+const hiddenCtx = hiddenSample.getContext('2d', { willReadFrequently: true });
+let ballHistory = []; // {time, x, y}
+
+function detectBall(videoEl) {
+  const w = Math.min(320, videoEl.videoWidth); // downscale for speed
+  const h = Math.round(w * (videoEl.videoHeight / videoEl.videoWidth));
+  hiddenSample.width = w;
+  hiddenSample.height = h;
+  hiddenCtx.drawImage(videoEl, 0, 0, w, h);
+  const frame = hiddenCtx.getImageData(0, 0, w, h).data;
+
+  let sumX = 0, sumY = 0, count = 0;
+
+  for (let py = 0; py < h; py++) {
+    for (let px = 0; px < w; px++) {
+      const idx = (py * w + px) * 4;
+      const r = frame[idx], g = frame[idx+1], b = frame[idx+2];
+      // tennis ball yellow-green: high R+G, lower B, G slightly dominant
+      if (g > 130 && r > 110 && b < 130 && (g - b) > 30 && (r - b) > 0) {
+        sumX += px; sumY += py; count++;
+      }
+    }
+  }
+
+  if (count < 3 || count > (w*h*0.15)) {
+    // too few pixels (no ball) or too many (bad lighting/whole court matching) -> reject
+    return null;
+  }
+
+  // scale centroid back to full video resolution
+  const scaleX = videoEl.videoWidth / w;
+  const scaleY = videoEl.videoHeight / h;
+  return { x: (sumX / count) * scaleX, y: (sumY / count) * scaleY };
+}
+
+function pxToMph(pxPerSec) {
+  if (pxPerFoot) {
+    const ftPerSec = pxPerSec / pxPerFoot;
+    return ftPerSec * 0.681818; // ft/s to mph
+  }
+  // fallback rough relative estimate if not calibrated
+  return Math.min(95, (pxPerSec / overlay.width) * 60);
+}
+
+
 analyzeBtn.addEventListener('click', async () => {
   if (!video.src) return;
+  if (!calibSkipped && !pxPerFoot) {
+    analysisStatus.textContent = 'Tip: calibrate above for real mph, or click "Skip" to use rough estimates.';
+  }
   analyzeBtn.disabled = true;
   analyzing = true;
   events = [];
+  ballHistory = [];
   feedbackList.innerHTML = '';
   await ensurePoseModel();
 
@@ -320,12 +1031,14 @@ analyzeBtn.addEventListener('click', async () => {
   video.muted = true;
   await video.play();
 
-  let lastWristY = null;
-  let lastWristX = null;
+  let lastWristX = null, lastWristY = null;
+  let lastLWristX = null, lastLWristY = null;
   let lastTime = 0;
   let cooldown = 0;
   let speeds = [];
   let shotCounts = {};
+  let lastBall = null;
+  let lastBallTime = 0;
 
   function loop() {
     if (video.paused || video.ended) {
@@ -336,6 +1049,37 @@ analyzeBtn.addEventListener('click', async () => {
     const result = poseLandmarker.detectForVideo(video, ts);
 
     ctx.clearRect(0, 0, overlay.width, overlay.height);
+    ballCtx.clearRect(0, 0, ballCanvas.width, ballCanvas.height);
+
+    // --- ball detection every frame ---
+    const ball = detectBall(video);
+    let currentBallSpeedMph = null;
+    if (ball) {
+      ballHistory.push({ time: video.currentTime, x: ball.x, y: ball.y });
+      if (ballHistory.length > 12) ballHistory.shift();
+
+      ballCtx.fillStyle = '#ffe14d';
+      ballCtx.beginPath();
+      ballCtx.arc(ball.x, ball.y, 7, 0, Math.PI*2);
+      ballCtx.fill();
+      ballCtx.strokeStyle = 'rgba(255,225,77,0.5)';
+      ballCtx.lineWidth = 2;
+      ballCtx.beginPath();
+      ballHistory.forEach((p, i) => i === 0 ? ballCtx.moveTo(p.x, p.y) : ballCtx.lineTo(p.x, p.y));
+      ballCtx.stroke();
+
+      if (lastBall) {
+        const dt = video.currentTime - lastBallTime;
+        if (dt > 0) {
+          const dx = ball.x - lastBall.x;
+          const dy = ball.y - lastBall.y;
+          const pxPerSec = Math.sqrt(dx*dx + dy*dy) / dt;
+          currentBallSpeedMph = pxToMph(pxPerSec);
+        }
+      }
+      lastBall = ball;
+      lastBallTime = video.currentTime;
+    }
 
     if (result.landmarks && result.landmarks.length > 0) {
       const lm = result.landmarks[0];
@@ -345,45 +1089,59 @@ analyzeBtn.addEventListener('click', async () => {
         drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#c4e538', lineWidth: 2 });
       }
 
-      // Right wrist = landmark 16 (rough proxy for racket hand motion)
-      const wrist = lm[16];
-      const shoulder = lm[12];
-      const hip = lm[24];
-
-      const wx = wrist.x * overlay.width;
-      const wy = wrist.y * overlay.height;
+      // track both wrists, swing detection uses whichever hand is moving faster (auto-detects dominant hand)
+      const rWrist = lm[16], lWrist = lm[15];
+      const rx = rWrist.x * overlay.width, ry = rWrist.y * overlay.height;
+      const lx = lWrist.x * overlay.width, ly = lWrist.y * overlay.height;
       const dt = video.currentTime - lastTime;
 
       if (lastWristY !== null && dt > 0 && cooldown <= 0) {
-        const dx = wx - lastWristX;
-        const dy = wy - lastWristY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const speedPxPerSec = dist / dt;
+        const rdx = rx - lastWristX, rdy = ry - lastWristY;
+        const ldx = lx - lastLWristX, ldy = ly - lastLWristY;
+        const rSpeed = Math.sqrt(rdx*rdx + rdy*rdy) / dt;
+        const lSpeed = Math.sqrt(ldx*ldx + ldy*ldy) / dt;
 
-        // crude pixel-speed -> mph estimate, calibrated loosely against frame width as a proxy for court scale
-        const estMph = Math.min(95, (speedPxPerSec / overlay.width) * 60);
+        const useRight = rSpeed >= lSpeed;
+        const wristPxPerSec = useRight ? rSpeed : lSpeed;
+        const dx = useRight ? rdx : ldx;
+        const dy = useRight ? rdy : ldy;
+        const racketWrist = useRight ? rWrist : lWrist;
+        const racketElbow = useRight ? lm[14] : lm[13];
+        const racketShoulder = useRight ? lm[12] : lm[11];
+        const offShoulder = useRight ? lm[11] : lm[12];
+        const hip = useRight ? lm[24] : lm[23];
+        const offHip = useRight ? lm[23] : lm[24];
+        const frontKnee = useRight ? lm[26] : lm[25];
+        const frontAnkle = useRight ? lm[28] : lm[27];
+        const nose = lm[0];
 
-        // detect a "swing peak": fast wrist motion crossing past the shoulder line horizontally
-        if (speedPxPerSec > overlay.width * 1.2) {
-          cooldown = 0.6; // seconds, avoid double-counting same swing
+        if (wristPxPerSec > overlay.width * 1.2) {
+          cooldown = 0.6;
 
-          const shotType = classifyShot(wrist, shoulder, hip, dx, dy);
+          const shotType = classifyShot(racketWrist, racketShoulder, hip, dx, dy);
           shotCounts[shotType] = (shotCounts[shotType] || 0) + 1;
-          speeds.push(estMph);
 
-          const note = generateFeedback(shotType, wrist, shoulder, hip);
-          events.push({ time: video.currentTime, type: shotType, speedEst: Math.round(estMph), note });
+          const speedMph = currentBallSpeedMph !== null
+            ? currentBallSpeedMph
+            : pxToMph(wristPxPerSec);
+          speeds.push(speedMph);
+
+          const note = generateFeedback(shotType, {
+            wrist: racketWrist, elbow: racketElbow, shoulder: racketShoulder,
+            offShoulder, hip, offHip, frontKnee, frontAnkle, nose
+          });
+          const sourceTag = currentBallSpeedMph !== null ? '' : ' (ball not detected — estimate)';
+          events.push({ time: video.currentTime, type: shotType, speedEst: Math.round(speedMph), note: note + sourceTag });
         }
       }
 
-      lastWristX = wx;
-      lastWristY = wy;
+      lastWristX = rx; lastWristY = ry;
+      lastLWristX = lx; lastLWristY = ly;
       lastTime = video.currentTime;
     }
 
     if (cooldown > 0) cooldown -= 1/30;
 
-    // show popup for any event near current time
     if (popupToggle.checked) {
       const active = events.find(e => Math.abs(e.time - video.currentTime) < 0.15);
       if (active) {
@@ -404,6 +1162,18 @@ analyzeBtn.addEventListener('click', async () => {
   rafId = requestAnimationFrame(loop);
 });
 
+function angleAt(a, b, c) {
+  // returns angle in degrees at point b, formed by points a-b-c
+  const ab = { x: a.x - b.x, y: a.y - b.y };
+  const cb = { x: c.x - b.x, y: c.y - b.y };
+  const dot = ab.x * cb.x + ab.y * cb.y;
+  const magAB = Math.sqrt(ab.x*ab.x + ab.y*ab.y);
+  const magCB = Math.sqrt(cb.x*cb.x + cb.y*cb.y);
+  if (magAB === 0 || magCB === 0) return 0;
+  const cos = Math.max(-1, Math.min(1, dot / (magAB * magCB)));
+  return Math.acos(cos) * (180 / Math.PI);
+}
+
 function classifyShot(wrist, shoulder, hip, dx, dy) {
   const aboveShoulder = wrist.y < shoulder.y;
   const movingUp = dy < 0;
@@ -413,19 +1183,68 @@ function classifyShot(wrist, shoulder, hip, dx, dy) {
   return 'Volley';
 }
 
-function generateFeedback(type, wrist, shoulder, hip) {
-  // simple rule-based notes as placeholders — refine once ball tracking is added
-  const contactHeight = hip.y - wrist.y;
+function generateFeedback(type, lm) {
+  const { wrist, elbow, shoulder, offShoulder, hip, offHip, frontKnee, frontAnkle, nose } = lm;
+  const issues = [];
+  const positives = [];
+
+  // 1. Contact point: how far in front of the hip the racket wrist is (forward = good, except serve)
+  const contactForward = Math.abs(wrist.x - hip.x);
+
+  // 2. Elbow extension at contact (straighter arm generally = more reach/power, very bent = cramped)
+  const elbowAngle = angleAt(shoulder, elbow, wrist);
+
+  // 3. Shoulder rotation: how open the shoulder line is relative to the hip line
+  const shoulderTilt = Math.abs(shoulder.y - offShoulder.y);
+  const hipTilt = Math.abs(hip.y - offHip.y);
+  const rotationGap = Math.abs(shoulderTilt - hipTilt);
+
+  // 4. Front knee bend: angle at the knee (closer to 180 = straight leg, lower = bent/loaded)
+  const kneeAngle = angleAt(hip, frontKnee, frontAnkle);
+
+  // 5. Balance: head (nose) position relative to the midpoint between hips — leaning far off-center suggests poor balance
+  const hipMidX = (hip.x + offHip.x) / 2;
+  const headOffset = Math.abs(nose.x - hipMidX);
+
   if (type === 'Serve / Overhead') {
-    return contactHeight > 0.3 ? 'good extension on contact' : 'try contacting the ball a bit higher';
+    const contactHeight = hip.y - wrist.y;
+    if (contactHeight > 0.32) positives.push('good extension on contact');
+    else issues.push('try contacting the ball higher, at full reach, rather than dropping the racket arm early');
+
+    if (elbowAngle < 140) issues.push('arm looks bent at contact — focus on fully extending up through the ball');
+
+    if (kneeAngle > 165) issues.push('legs look fairly straight at contact — driving up more from the knees can add power');
   }
-  if (type === 'Forehand') {
-    return wrist.x - hip.x > 0.15 ? 'solid contact point out in front' : 'contact looks a little late/close to body';
+  else if (type === 'Forehand') {
+    if (contactForward > 0.15) positives.push('solid contact point out in front of the body');
+    else issues.push('contact looks late/close to the body — try meeting the ball further out in front');
+
+    if (rotationGap < 0.02) issues.push('shoulders look fairly square to the net — more hip/shoulder rotation on the backswing can add power');
+
+    if (elbowAngle < 100) issues.push('arm looks quite cramped through contact — give the swing a bit more room to extend');
+
+    if (headOffset > 0.12) issues.push('head/upper body drifting off-balance through the shot — try staying more centered over your base');
   }
-  if (type === 'Backhand') {
-    return 'check follow-through extension';
+  else if (type === 'Backhand') {
+    if (contactForward > 0.12) positives.push('good contact point ahead of the body');
+    else issues.push('contact point looks a little late — try preparing the racket earlier');
+
+    if (kneeAngle > 170) issues.push('front leg looks quite straight — a little more knee bend can help with balance and power');
+
+    issues.push('check that your follow-through finishes high and extended, not cut short');
   }
-  return 'compact swing detected';
+  else { // Volley
+    if (elbowAngle < 130) positives.push('compact, controlled swing — good for a volley');
+    else issues.push('swing looks a bit long for a volley — try a shorter, punchier motion');
+
+    if (headOffset > 0.1) issues.push('try keeping your head/balance steadier through contact');
+  }
+
+  if (positives.length === 0 && issues.length === 0) {
+    return 'shot looks mechanically solid';
+  }
+  const combined = [...positives.slice(0,1), ...issues.slice(0,2)];
+  return combined.join('; ');
 }
 
 function finishAnalysis(speeds, shotCounts) {
@@ -441,6 +1260,18 @@ function finishAnalysis(speeds, shotCounts) {
   document.getElementById('statTopSpeed').textContent = speeds.length ? Math.round(Math.max(...speeds)) : 0;
   const mainShot = Object.entries(shotCounts).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('statMain').textContent = mainShot ? mainShot[0] : '-';
+
+  if (currentUser) {
+    document.getElementById('publishBox').style.display = 'block';
+  }
+
+  saveSessionToSupabase({
+    shotCount: events.length,
+    avgSpeed: speeds.length ? Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length) : 0,
+    topSpeed: speeds.length ? Math.round(Math.max(...speeds)) : 0,
+    mainShot: mainShot ? mainShot[0] : '-',
+    events: events
+  });
 
   feedbackList.innerHTML = '';
   events.forEach(e => {
