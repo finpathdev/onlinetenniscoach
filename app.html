@@ -371,16 +371,16 @@
   </div>
 </div>
 
-<div class="auth-bar" id="authBar">
-  <span id="loggedOutView">
-    <input type="email" id="authEmail" placeholder="email" style="width:140px;">
-    <input type="password" id="authPassword" placeholder="password" style="width:110px;">
-    <button id="signInBtn" style="padding:6px 12px; font-size:0.82rem;">Sign In</button>
-    <button class="secondary" id="signUpBtn" style="padding:6px 12px; font-size:0.82rem;">Sign Up</button>
+<div class="auth-bar" id="authBar" style="padding: 14px 20px;">
+  <span id="loggedOutView" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <input type="email" id="authEmail" placeholder="email" style="width:180px; padding:8px 12px; font-size:0.9rem; background:#0d1b0f; border:1px solid #2f4f35; color:var(--text); border-radius:8px;">
+    <input type="password" id="authPassword" placeholder="password" style="width:150px; padding:8px 12px; font-size:0.9rem; background:#0d1b0f; border:1px solid #2f4f35; color:var(--text); border-radius:8px;">
+    <button id="signInBtn" style="padding:8px 16px; font-size:0.88rem;">Sign In</button>
+    <button class="secondary" id="signUpBtn" style="padding:8px 16px; font-size:0.88rem;">Sign Up</button>
   </span>
-  <span id="loggedInView" style="display:none;">
+  <span id="loggedInView" style="display:none; align-items:center; gap:10px;">
     <span class="user-email" id="userEmailLabel"></span>
-    <button class="secondary" id="signOutBtn" style="padding:6px 12px; font-size:0.82rem;">Sign Out</button>
+    <button class="secondary" id="signOutBtn" style="padding:8px 16px; font-size:0.88rem;">Sign Out</button>
   </span>
 </div>
 
@@ -555,7 +555,7 @@
   </div>
 
   <div class="card">
-    <h3 style="margin-top:0;">How this works <span class="badge">v0.3 prototype</span></h3>
+    <h3 style="margin-top:0;">How this works</h3>
     <p style="color: var(--muted); font-size: 0.88rem; line-height:1.5;">
       Pose tracking runs via MediaPipe. Ball tracking uses color + motion detection tuned for
       standard yellow-green tennis balls (works best with good lighting and a ball that contrasts
@@ -780,13 +780,13 @@ async function refreshAuthUI() {
   cachedPBs = null;
   if (user) {
     loggedOutView.style.display = 'none';
-    loggedInView.style.display = 'inline';
+    loggedInView.style.display = 'inline-flex';
     userEmailLabel.textContent = user.email;
     historyCard.style.display = 'block';
     if (typeof loadUserProfile === 'function') await loadUserProfile();
     loadSessions();
   } else {
-    loggedOutView.style.display = 'inline';
+    loggedOutView.style.display = 'flex';
     loggedInView.style.display = 'none';
     historyCard.style.display = 'none';
     userProfile = null;
