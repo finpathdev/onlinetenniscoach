@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Tennis Coach</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c4e538">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tennis Coach">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%230d1b0f'/%3E%3Ccircle cx='50' cy='50' r='38' fill='%23c4e538'/%3E%3Cpath d='M14 50 C 30 25, 70 25, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3Cpath d='M14 50 C 30 75, 70 75, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3C/svg%3E">
 <style>
   :root {
@@ -345,7 +351,25 @@
     AI Tennis Coach
   </h1>
   <p>Upload your footage. Get shot-by-shot feedback. All in your browser.</p>
+  <div style="margin-top:12px;">
+    <button id="installBtn" style="display:none; padding:8px 18px; font-size:0.88rem;">📱 Install as app</button>
+    <button id="iosInstructBtn" class="secondary" style="display:none; padding:8px 18px; font-size:0.88rem;">📱 Add to home screen</button>
+  </div>
 </header>
+
+<div id="iosInstallModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:100; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:#16241a; border:1px solid var(--lime); border-radius:14px; max-width:420px; padding:24px; color:var(--text);">
+    <h2 style="margin-top:0;">📱 Add to Home Screen</h2>
+    <p style="color:var(--muted); line-height:1.6;">To install this on your iPhone:</p>
+    <ol style="color:var(--muted); line-height:1.9; padding-left:20px;">
+      <li>Tap the <strong style="color:var(--text);">Share button</strong> at the bottom of Safari (the square with an arrow pointing up)</li>
+      <li>Scroll down and tap <strong style="color:var(--text);">"Add to Home Screen"</strong></li>
+      <li>Tap <strong style="color:var(--text);">Add</strong> in the top-right</li>
+    </ol>
+    <p style="color:var(--muted); font-size:0.82rem;">The app will appear on your home screen with the Tennis Coach icon and open like a native app.</p>
+    <button id="iosModalCloseBtn" style="margin-top:8px;">Got it</button>
+  </div>
+</div>
 
 <div class="auth-bar" id="authBar">
   <span id="loggedOutView">
@@ -670,6 +694,59 @@
 </div>
 
 <footer>AI Tennis Coach — built with MediaPipe Pose, runs 100% client-side.</footer>
+
+<script>
+// ---------- PWA install support ----------
+// Register service worker for installability
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed', err));
+  });
+}
+
+// Detect iOS Safari (which doesn't support beforeinstallprompt but supports "Add to Home Screen")
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('installBtn');
+  if (btn && !isStandalone) btn.style.display = 'inline-block';
+});
+
+window.addEventListener('appinstalled', () => {
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'none';
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Show iOS-specific button if on iOS and not already installed
+  if (isIOS && !isStandalone) {
+    const iosBtn = document.getElementById('iosInstructBtn');
+    if (iosBtn) iosBtn.style.display = 'inline-block';
+  }
+
+  const installBtn = document.getElementById('installBtn');
+  if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') installBtn.style.display = 'none';
+      deferredInstallPrompt = null;
+    });
+  }
+
+  const iosBtn = document.getElementById('iosInstructBtn');
+  const iosModal = document.getElementById('iosInstallModal');
+  const iosClose = document.getElementById('iosModalCloseBtn');
+  if (iosBtn && iosModal) iosBtn.addEventListener('click', () => iosModal.style.display = 'flex');
+  if (iosClose && iosModal) iosClose.addEventListener('click', () => iosModal.style.display = 'none');
+});
+</script>
 
 <script type="module">
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
