@@ -435,6 +435,36 @@
 
   <div class="card" id="reviewCard" style="display:none;">
 
+    <div class="calib-banner" id="sessionTypeBanner" style="display:block;">
+      <strong>🎯 Session type</strong>
+      <p style="color: var(--muted); margin: 8px 0;">Was this a practice session or a match?</p>
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <label class="toggle" style="flex:1; padding:10px; border-radius:8px; background:#0d1b0f; border:1px solid #2f4f35; cursor:pointer;">
+          <input type="radio" name="sessionType" value="practice" checked>
+          Practice
+        </label>
+        <label class="toggle" style="flex:1; padding:10px; border-radius:8px; background:#0d1b0f; border:1px solid #2f4f35; cursor:pointer;">
+          <input type="radio" name="sessionType" value="match">
+          Match
+        </label>
+      </div>
+      <div id="matchDetails" style="display:none; margin-top:10px;">
+        <input type="text" id="matchOpponent" placeholder="Opponent name (optional)" style="width:100%; padding:8px 12px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.9rem; margin-bottom:8px;">
+        <input type="text" id="matchScore" placeholder="Final score (e.g. 6-3, 6-4)" style="width:100%; padding:8px 12px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.9rem;">
+      </div>
+    </div>
+
+    <div class="calib-banner" id="playerIdBanner" style="display:block;">
+      <strong>👤 Which player is you?</strong>
+      <p style="color: var(--muted); margin: 8px 0;">
+        Tap 1-3 photos below that show you (from different moments). The app uses your clothing color to track your shots throughout the video.
+        <button class="secondary" id="extractPlayersBtn" style="padding:4px 12px; font-size:0.78rem; margin-left:6px;">Detect players</button>
+        <button class="secondary" id="skipPlayerIdBtn" style="padding:4px 12px; font-size:0.78rem;">Skip (single player)</button>
+        <span id="playerIdStatus" style="margin-left:8px; font-size:0.78rem; color: var(--muted);"></span>
+      </p>
+      <div id="playerCandidates" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap:8px; margin-top:10px;"></div>
+    </div>
+
     <div class="calib-banner" id="calibBanner">
       <strong>📏 Calibrate for real speed (one-time per video)</strong>
       <p style="color: var(--muted); margin: 8px 0;">
@@ -460,11 +490,24 @@
       </div>
     </div>
 
-    <div class="video-wrap" id="videoWrap">
-      <video id="video" controls playsinline></video>
-      <canvas id="overlay"></canvas>
-      <canvas id="ballCanvas"></canvas>
-      <div class="popup" id="popup"></div>
+    <div style="display:flex; gap:14px; flex-wrap:wrap;">
+      <div class="video-wrap" id="videoWrap" style="flex: 1 1 400px; min-width: 300px;">
+        <video id="video" controls playsinline></video>
+        <canvas id="overlay"></canvas>
+        <canvas id="ballCanvas"></canvas>
+        <div class="popup" id="popup"></div>
+      </div>
+      <div id="livePanel" style="flex: 1 1 220px; min-width: 220px; background:#101d12; border-radius:10px; padding:14px; display:none;">
+        <div style="color:var(--muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Now playing</div>
+        <div id="liveShotType" style="font-size:1.3rem; font-weight:700; color:var(--lime); margin-bottom:4px;">—</div>
+        <div id="liveShotSpeed" style="color:var(--muted); font-size:0.9rem; margin-bottom:14px;">—</div>
+        <div id="liveShotNote" style="color:var(--text); font-size:0.85rem; line-height:1.5; margin-bottom:14px;"></div>
+        <div id="liveMatchScore" style="display:none; border-top: 1px solid #223a26; padding-top:12px;">
+          <div style="color:var(--muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Match</div>
+          <div id="liveScoreValue" style="font-size:1.1rem; color:var(--text);">—</div>
+          <div id="liveOpponent" style="color:var(--muted); font-size:0.82rem; margin-top:2px;"></div>
+        </div>
+      </div>
     </div>
 
     <div class="controls">
@@ -842,8 +885,11 @@ async function loadSessions() {
     const rewatchBtn = s.video_path
       ? `<button class="secondary rewatch-btn" data-path="${s.video_path}" data-session-id="${s.id}" style="padding:3px 10px; font-size:0.75rem; margin-left:8px;">▶ Rewatch</button>`
       : '';
+    const matchTag = s.session_type === 'match'
+      ? `<span style="background:#223a26; color:var(--lime); padding:2px 8px; border-radius:20px; font-size:0.7rem; margin-right:6px;">Match${s.match_score ? ' · ' + s.match_score : ''}${s.match_opponent ? ' vs ' + s.match_opponent : ''}</span>`
+      : '';
     div.innerHTML = `
-      <span><strong>${s.shot_count} shots</strong> &middot; avg ${s.avg_speed} mph &middot; top ${s.top_speed} mph &middot; mostly ${s.main_shot} ${rewatchBtn}</span>
+      <span>${matchTag}<strong>${s.shot_count} shots</strong> &middot; avg ${s.avg_speed} mph &middot; top ${s.top_speed} mph &middot; mostly ${s.main_shot} ${rewatchBtn}</span>
       <span class="meta">${date}</span>
     `;
     historyList.appendChild(div);
@@ -861,6 +907,9 @@ async function loadSessions() {
       if (session) {
         events = session.events || [];
         window._lastRallies = [];
+        sessionType = session.session_type || 'practice';
+        matchOpponent = session.match_opponent || '';
+        matchScore = session.match_score || '';
       }
       video.src = signed.signedUrl;
       currentVideoFile = null; // it's not a local file anymore
@@ -899,6 +948,9 @@ async function saveSessionToSupabase(summary) {
     top_speed: summary.topSpeed,
     main_shot: summary.mainShot,
     events: summary.events,
+    session_type: summary.sessionType || 'practice',
+    match_opponent: summary.matchOpponent || null,
+    match_score: summary.matchScore || null,
     is_public: false,
     caption: ''
   }).select().single();
@@ -1985,16 +2037,45 @@ analyzeBtn.addEventListener('click', async () => {
     }
 
     if (result.landmarks && result.landmarks.length > 0) {
-      // If multi-player mode: pick the pose on the user's chosen side of the court
+      // Pick which pose is "the user"
       let lm = result.landmarks[0];
       const multiOn = document.getElementById('multiPlayerToggle').checked;
-      if (multiOn && result.landmarks.length > 1) {
-        const mySide = document.getElementById('mySide').value; // 'near' = bottom, 'far' = top
-        // hip Y position: larger Y = lower on screen = closer/near
+
+      // Preferred method: match by clothing color signature (set during player identification)
+      if (playerColorSig && result.landmarks.length > 1) {
+        // sample torso color for each detected pose in current frame
+        const w = video.videoWidth, h = video.videoHeight;
+        const sampleCanvas = document.createElement('canvas');
+        sampleCanvas.width = w; sampleCanvas.height = h;
+        const sctx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+        sctx.drawImage(video, 0, 0);
+        const frameData = sctx.getImageData(0, 0, w, h);
+
+        let best = { dist: Infinity, pose: lm };
+        result.landmarks.forEach(pose => {
+          const xs = pose.map(p => p.x * w);
+          const ys = pose.map(p => p.y * h);
+          const bbox = [Math.min(...xs), Math.min(...ys), Math.max(...xs)-Math.min(...xs), Math.max(...ys)-Math.min(...ys)];
+          const sig = avgTorsoColor(frameData, bbox);
+          const dist = colorDistance(sig, playerColorSig);
+          if (dist < best.dist) best = { dist, pose };
+        });
+        lm = best.pose;
+
+        if (skeletonToggle.checked) {
+          const others = result.landmarks.filter(l => l !== lm);
+          others.forEach(o => {
+            drawingUtils.drawLandmarks(o, { radius: 2, color: 'rgba(155,176,159,0.4)' });
+            drawingUtils.drawConnectors(o, PoseLandmarker.POSE_CONNECTIONS, { color: 'rgba(155,176,159,0.4)', lineWidth: 1 });
+          });
+        }
+      }
+      // Fallback: near/far side selection if multi-player mode is on
+      else if (multiOn && result.landmarks.length > 1) {
+        const mySide = document.getElementById('mySide').value;
         const hipY = arr => (arr[23].y + arr[24].y) / 2;
         const sorted = [...result.landmarks].sort((a,b) => hipY(b) - hipY(a));
         lm = mySide === 'near' ? sorted[0] : sorted[sorted.length - 1];
-        // draw the other player faded so the user sees it's detected but ignored
         if (skeletonToggle.checked) {
           const others = result.landmarks.filter(l => l !== lm);
           others.forEach(o => {
@@ -2251,14 +2332,23 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
   const reportCardEl = document.getElementById('reportCard');
   if (reportCardEl) reportCardEl.innerHTML = reportRows;
 
-  track('video_analyzed', { shots: events.length, top: speeds.length ? Math.round(Math.max(...speeds)) : 0 });
+  track('video_analyzed', { shots: events.length, top: speeds.length ? Math.round(Math.max(...speeds)) : 0, sessionType });
+
+  // capture current UI values for match info
+  matchOpponent = document.getElementById('matchOpponent') ? document.getElementById('matchOpponent').value : '';
+  matchScore = document.getElementById('matchScore') ? document.getElementById('matchScore').value : '';
+  const selectedType = document.querySelector('input[name="sessionType"]:checked');
+  sessionType = selectedType ? selectedType.value : 'practice';
 
   saveSessionToSupabase({
     shotCount: events.length,
     avgSpeed: speeds.length ? Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length) : 0,
     topSpeed: speeds.length ? Math.round(Math.max(...speeds)) : 0,
     mainShot: mainShot ? mainShot[0] : '-',
-    events: events
+    events: events,
+    sessionType,
+    matchOpponent,
+    matchScore
   });
 
   feedbackList.innerHTML = '';
@@ -2397,6 +2487,201 @@ multiPlayerToggle.addEventListener('change', async () => {
     poseLandmarker = null;
   }
 });
+
+// ---------- Session type / match info ----------
+let sessionType = 'practice';
+let matchOpponent = '';
+let matchScore = '';
+
+document.addEventListener('change', (e) => {
+  if (e.target.name === 'sessionType') {
+    sessionType = e.target.value;
+    document.getElementById('matchDetails').style.display = sessionType === 'match' ? 'block' : 'none';
+  }
+});
+
+// ---------- Player identification via clothing color signature ----------
+let playerColorSig = null; // [r, g, b] avg from user's torso in selected frames
+let candidateData = []; // {frameTime, bbox, dataUrl, colorSig, index}
+
+function avgTorsoColor(imgData, bbox) {
+  // Sample the torso region (upper-middle of bbox) for representative clothing color
+  const [x, y, w, h] = bbox;
+  const startX = Math.max(0, Math.floor(x + w * 0.25));
+  const endX = Math.min(imgData.width, Math.floor(x + w * 0.75));
+  const startY = Math.max(0, Math.floor(y + h * 0.3));
+  const endY = Math.min(imgData.height, Math.floor(y + h * 0.55));
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let py = startY; py < endY; py += 2) {
+    for (let px = startX; px < endX; px += 2) {
+      const idx = (py * imgData.width + px) * 4;
+      r += imgData.data[idx];
+      g += imgData.data[idx + 1];
+      b += imgData.data[idx + 2];
+      n++;
+    }
+  }
+  if (n === 0) return null;
+  return [r/n, g/n, b/n];
+}
+
+function colorDistance(a, b) {
+  if (!a || !b) return 999;
+  const dr = a[0] - b[0], dg = a[1] - b[1], db = a[2] - b[2];
+  return Math.sqrt(dr*dr + dg*dg + db*db);
+}
+
+async function extractPlayerCandidates() {
+  const btn = document.getElementById('extractPlayersBtn');
+  const status = document.getElementById('playerIdStatus');
+  const grid = document.getElementById('playerCandidates');
+  if (!video.src) { status.textContent = 'Load a video first.'; return; }
+
+  btn.disabled = true;
+  status.textContent = 'Loading pose model…';
+  await ensurePoseModel();
+
+  status.textContent = 'Scanning for players…';
+  grid.innerHTML = '';
+  candidateData = [];
+
+  const duration = video.duration;
+  const sampleTimes = [duration*0.15, duration*0.35, duration*0.55, duration*0.75].filter(t => !isNaN(t) && t > 0);
+
+  const hidden = document.createElement('canvas');
+  hidden.width = video.videoWidth; hidden.height = video.videoHeight;
+  const hctx = hidden.getContext('2d', { willReadFrequently: true });
+
+  for (const t of sampleTimes) {
+    video.currentTime = t;
+    await new Promise(r => video.addEventListener('seeked', r, { once: true }));
+    await new Promise(r => setTimeout(r, 100)); // extra time for frame to render
+
+    hctx.drawImage(video, 0, 0);
+    const imgData = hctx.getImageData(0, 0, hidden.width, hidden.height);
+
+    // Detect poses in this frame
+    const result = poseLandmarker.detectForVideo(video, performance.now());
+    if (!result.landmarks || result.landmarks.length === 0) continue;
+
+    for (let pIdx = 0; pIdx < result.landmarks.length; pIdx++) {
+      const lm = result.landmarks[pIdx];
+      // compute bbox
+      const xs = lm.map(p => p.x * hidden.width);
+      const ys = lm.map(p => p.y * hidden.height);
+      const minX = Math.max(0, Math.min(...xs) - 20);
+      const maxX = Math.min(hidden.width, Math.max(...xs) + 20);
+      const minY = Math.max(0, Math.min(...ys) - 20);
+      const maxY = Math.min(hidden.height, Math.max(...ys) + 20);
+      const bbox = [minX, minY, maxX-minX, maxY-minY];
+
+      if (bbox[2] < 40 || bbox[3] < 60) continue; // too small
+
+      // crop to a thumbnail
+      const thumb = document.createElement('canvas');
+      const targetH = 120;
+      const scale = targetH / bbox[3];
+      thumb.width = bbox[2] * scale;
+      thumb.height = targetH;
+      const tctx = thumb.getContext('2d');
+      tctx.drawImage(video, bbox[0], bbox[1], bbox[2], bbox[3], 0, 0, thumb.width, thumb.height);
+
+      const colorSig = avgTorsoColor(imgData, bbox);
+      if (!colorSig) continue;
+
+      candidateData.push({
+        frameTime: t,
+        bbox,
+        dataUrl: thumb.toDataURL('image/jpeg', 0.7),
+        colorSig,
+        index: candidateData.length,
+        selected: false
+      });
+    }
+  }
+
+  if (candidateData.length === 0) {
+    status.textContent = 'No players detected. You can skip this step.';
+    btn.disabled = false;
+    return;
+  }
+
+  // render grid
+  grid.innerHTML = candidateData.map(c => `
+    <div class="player-candidate" data-idx="${c.index}" style="border:2px solid #223a26; border-radius:8px; overflow:hidden; cursor:pointer; transition:border-color 0.15s;">
+      <img src="${c.dataUrl}" style="width:100%; height:120px; object-fit:cover; display:block;">
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('.player-candidate').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx);
+      candidateData[idx].selected = !candidateData[idx].selected;
+      el.style.borderColor = candidateData[idx].selected ? 'var(--lime)' : '#223a26';
+      // recompute signature = avg of selected color sigs
+      const selected = candidateData.filter(c => c.selected);
+      if (selected.length > 0) {
+        const avg = [0,0,0];
+        selected.forEach(c => { avg[0] += c.colorSig[0]; avg[1] += c.colorSig[1]; avg[2] += c.colorSig[2]; });
+        playerColorSig = [avg[0]/selected.length, avg[1]/selected.length, avg[2]/selected.length];
+        status.innerHTML = `<span style="color:var(--lime);">${selected.length} photo${selected.length===1?'':'s'} selected</span>`;
+      } else {
+        playerColorSig = null;
+        status.textContent = '';
+      }
+    });
+  });
+
+  status.textContent = `Detected ${candidateData.length} people across ${sampleTimes.length} frames. Tap the ones showing you.`;
+  video.currentTime = 0;
+  btn.disabled = false;
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'extractPlayersBtn') extractPlayerCandidates();
+  if (e.target.id === 'skipPlayerIdBtn') {
+    playerColorSig = null;
+    document.getElementById('playerIdBanner').style.display = 'none';
+    document.getElementById('playerIdStatus').textContent = 'Skipped.';
+  }
+});
+
+// ---------- Live playback panel ----------
+function updateLivePanel() {
+  const panel = document.getElementById('livePanel');
+  if (!panel) return;
+  if (!events || events.length === 0) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  const t = video.currentTime;
+  // find nearest past event
+  let current = null;
+  for (const e of events) {
+    if (e.time <= t) current = e;
+    else break;
+  }
+  if (!current) {
+    document.getElementById('liveShotType').textContent = 'waiting for first shot…';
+    document.getElementById('liveShotSpeed').textContent = '';
+    document.getElementById('liveShotNote').textContent = '';
+  } else {
+    const spinTag = (current.spin && current.spin !== '—') ? ` (${current.spin})` : '';
+    document.getElementById('liveShotType').textContent = current.type + spinTag;
+    document.getElementById('liveShotSpeed').textContent = `~${current.speedEst} mph`;
+    document.getElementById('liveShotNote').textContent = current.note || '';
+  }
+
+  // match score
+  if (sessionType === 'match' && (matchScore || matchOpponent)) {
+    document.getElementById('liveMatchScore').style.display = 'block';
+    document.getElementById('liveScoreValue').textContent = matchScore || '—';
+    document.getElementById('liveOpponent').textContent = matchOpponent ? ('vs ' + matchOpponent) : '';
+  } else {
+    document.getElementById('liveMatchScore').style.display = 'none';
+  }
+}
+
+video.addEventListener('timeupdate', updateLivePanel);
 </script>
 
 </body>
