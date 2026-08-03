@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Tennis Coach</title>
+<title>AI Tennis Coach — free AI-powered tennis coaching</title>
+<meta name="description" content="Upload your tennis footage, get instant AI coaching feedback, shot classification, speed tracking, and progress dashboard. 100% free, runs in your browser.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%230d1b0f'/%3E%3Ccircle cx='50' cy='50' r='38' fill='%23c4e538'/%3E%3Cpath d='M14 50 C 30 25, 70 25, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3Cpath d='M14 50 C 30 75, 70 75, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3C/svg%3E">
 <style>
   :root {
@@ -21,6 +22,7 @@
     background: var(--dark);
     color: var(--text);
     position: relative;
+    overflow-x: hidden;
   }
   #rippleBg {
     position: fixed;
@@ -30,233 +32,150 @@
     z-index: 0;
     pointer-events: none;
   }
-  header, .auth-bar, main, footer {
-    position: relative;
-    z-index: 1;
-  }
-  header {
-    padding: 24px 20px;
+  main, header, footer { position: relative; z-index: 1; }
+  .container { max-width: 960px; margin: 0 auto; padding: 20px; }
+  .hero {
     text-align: center;
-    border-bottom: 1px solid #223a26;
-  }
-  header h1 {
-    margin: 0;
-    font-size: 1.6rem;
-    letter-spacing: -0.5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
+    padding: 80px 20px 60px;
   }
   .app-logo {
-    width: 38px;
-    height: 38px;
-    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
   }
-  header p {
+  h1 {
+    font-size: 3rem;
+    margin: 0 0 16px;
+    letter-spacing: -1.5px;
+    line-height: 1.1;
+  }
+  h1 .accent { color: var(--lime); }
+  .tagline {
+    font-size: 1.25rem;
     color: var(--muted);
-    margin: 6px 0 0;
-    font-size: 0.95rem;
+    max-width: 620px;
+    margin: 0 auto 32px;
+    line-height: 1.5;
   }
-  main {
-    max-width: 900px;
+  .cta-btn {
+    display: inline-block;
+    background: var(--lime);
+    color: #15260f;
+    font-weight: 700;
+    padding: 16px 36px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 1.1rem;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .cta-btn:hover { transform: translateY(-2px); }
+  .cta-note {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .section {
+    padding: 60px 20px;
+    max-width: 960px;
     margin: 0 auto;
-    padding: 20px;
   }
-  .card {
+  .section-title {
+    text-align: center;
+    font-size: 2rem;
+    margin: 0 0 40px;
+    letter-spacing: -0.5px;
+  }
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+  }
+  .feature {
     background: rgba(22, 36, 26, 0.82);
     backdrop-filter: blur(6px);
     border: 1px solid #223a26;
     border-radius: 14px;
-    padding: 20px;
-    margin-bottom: 20px;
+    padding: 24px;
   }
-  .upload-zone {
-    border: 2px dashed #2f4f35;
-    border-radius: 12px;
-    padding: 40px 20px;
+  .feature .icon {
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+  }
+  .feature h3 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+    color: var(--lime);
+  }
+  .feature p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+  }
+  .step {
     text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
   }
-  .upload-zone:hover, .upload-zone.dragover {
-    border-color: var(--lime);
-    background: #1a2e1e;
-  }
-  .upload-zone p { color: var(--muted); margin: 8px 0 0; font-size: 0.9rem; }
-  input[type=file] { display: none; }
-  button {
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
     background: var(--lime);
     color: #15260f;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 0.9rem;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 1.2rem;
+    margin-bottom: 12px;
   }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-  button.secondary {
-    background: transparent;
-    border: 1px solid #2f4f35;
-    color: var(--text);
+  .step h4 {
+    margin: 0 0 6px;
+    font-size: 1rem;
   }
-  .video-wrap {
-    position: relative;
-    width: 100%;
-    border-radius: 10px;
-    overflow: hidden;
-    background: black;
-  }
-  video, canvas {
-    width: 100%;
-    display: block;
-  }
-  canvas {
-    position: absolute;
-    top: 0; left: 0;
-    pointer-events: none;
-  }
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: center;
-    margin-top: 14px;
-  }
-  .toggle {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
+  .step p {
     color: var(--muted);
-  }
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
-    margin-top: 16px;
-  }
-  .stat {
-    background: #101d12;
-    border-radius: 10px;
-    padding: 14px;
-    text-align: center;
-  }
-  .stat .val { font-size: 1.4rem; font-weight: 700; color: var(--lime); }
-  .stat .label { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
-  #feedbackList {
-    list-style: none;
-    padding: 0;
-    margin: 14px 0 0;
-  }
-  #feedbackList li {
-    background: #101d12;
-    border-left: 3px solid var(--lime);
-    padding: 10px 14px;
-    border-radius: 6px;
-    margin-bottom: 8px;
     font-size: 0.88rem;
+    margin: 0;
+    line-height: 1.5;
   }
-  #feedbackList li .time {
-    color: var(--lime);
-    font-weight: 600;
-    margin-right: 8px;
-    cursor: pointer;
-  }
-  .popup {
-    position: absolute;
-    background: rgba(13, 27, 15, 0.92);
+  .bottom-cta {
+    background: rgba(22, 36, 26, 0.82);
+    backdrop-filter: blur(6px);
     border: 1px solid var(--lime);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 0.78rem;
-    color: var(--lime);
-    pointer-events: none;
-    display: none;
-    max-width: 200px;
+    border-radius: 18px;
+    padding: 48px 30px;
+    text-align: center;
+    margin: 40px 20px 60px;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .bottom-cta h2 {
+    margin: 0 0 12px;
+    font-size: 1.7rem;
+  }
+  .bottom-cta p {
+    color: var(--muted);
+    margin: 0 0 24px;
   }
   footer {
     text-align: center;
     color: var(--muted);
-    font-size: 0.75rem;
-    padding: 30px 20px;
+    font-size: 0.78rem;
+    padding: 30px 20px 60px;
   }
-  .badge {
-    display: inline-block;
-    background: #223a26;
-    color: var(--lime);
-    font-size: 0.7rem;
-    padding: 3px 8px;
-    border-radius: 20px;
-    margin-left: 8px;
+  @media (max-width: 600px) {
+    h1 { font-size: 2.1rem; }
+    .hero { padding: 50px 20px 40px; }
+    .section-title { font-size: 1.5rem; }
   }
-  .calib-banner {
-    background: #1a2e1e;
-    border: 1px solid var(--lime);
-    border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 14px;
-    font-size: 0.85rem;
-  }
-  .calib-banner select, .calib-banner input[type=number] {
-    background: #0d1b0f;
-    border: 1px solid #2f4f35;
-    color: var(--text);
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    margin: 0 6px;
-  }
-  .calib-points {
-    margin-top: 10px;
-    font-size: 0.8rem;
-    color: var(--muted);
-  }
-  .calib-dot {
-    position: absolute;
-    width: 10px; height: 10px;
-    background: var(--lime);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-  }
-  #calibCanvas {
-    cursor: crosshair;
-  }
-  .auth-bar {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    align-items: center;
-    padding: 10px 20px;
-    border-bottom: 1px solid #223a26;
-    font-size: 0.85rem;
-  }
-  .auth-bar input {
-    background: #16241a;
-    border: 1px solid #2f4f35;
-    color: var(--text);
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-  }
-  .auth-bar .user-email {
-    color: var(--lime);
-  }
-  .session-item {
-    background: #101d12;
-    border-radius: 10px;
-    padding: 12px 14px;
-    margin-bottom: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    font-size: 0.85rem;
-  }
-  .session-item .meta { color: var(--muted); font-size: 0.78rem; }
 </style>
 </head>
 <body>
@@ -264,1974 +183,142 @@
 <canvas id="rippleBg"></canvas>
 
 <script>
+// Ripple background — same as the app
 (function() {
   const canvas = document.getElementById('rippleBg');
   const c = canvas.getContext('2d');
   let ripples = [];
   let w, h;
-
-  function resize() {
-    w = canvas.width = window.innerWidth;
-    h = canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resize);
-  resize();
-
+  function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+  window.addEventListener('resize', resize); resize();
   function spawnRipple() {
     ripples.push({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      r: 0,
-      maxR: 140 + Math.random() * 220,
-      speed: 0.4 + Math.random() * 0.5,
+      x: Math.random() * w, y: Math.random() * h, r: 0,
+      maxR: 140 + Math.random() * 220, speed: 0.4 + Math.random() * 0.5,
       alpha: 0.16 + Math.random() * 0.1,
       hue: Math.random() > 0.5 ? 'lime' : 'green'
     });
   }
-
-  // seed a few ripples at staggered ages so it doesn't look empty on load
   for (let i = 0; i < 6; i++) {
     ripples.push({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      r: Math.random() * 200,
-      maxR: 140 + Math.random() * 220,
+      x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight,
+      r: Math.random() * 200, maxR: 140 + Math.random() * 220,
       speed: 0.4 + Math.random() * 0.5,
       alpha: 0.16 + Math.random() * 0.1,
       hue: Math.random() > 0.5 ? 'lime' : 'green'
     });
   }
-
   let frame = 0;
   function loop() {
     frame++;
     c.clearRect(0, 0, w, h);
-
-    // subtle base gradient wash for a "water" feel
     const grad = c.createRadialGradient(w*0.5, h*0.3, 0, w*0.5, h*0.3, Math.max(w,h)*0.8);
     grad.addColorStop(0, 'rgba(30, 86, 49, 0.12)');
     grad.addColorStop(1, 'rgba(13, 27, 15, 0)');
-    c.fillStyle = grad;
-    c.fillRect(0, 0, w, h);
-
+    c.fillStyle = grad; c.fillRect(0, 0, w, h);
     ripples.forEach(rp => {
       rp.r += rp.speed;
       const progress = rp.r / rp.maxR;
       const fade = Math.max(0, 1 - progress);
       const color = rp.hue === 'lime' ? `196, 229, 56` : `30, 86, 49`;
-      c.beginPath();
-      c.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+      c.beginPath(); c.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
       c.strokeStyle = `rgba(${color}, ${rp.alpha * fade})`;
-      c.lineWidth = 1.4;
-      c.stroke();
+      c.lineWidth = 1.4; c.stroke();
     });
-
     ripples = ripples.filter(rp => rp.r < rp.maxR);
     if (frame % 70 === 0) spawnRipple();
-
     requestAnimationFrame(loop);
   }
   loop();
 })();
 </script>
-<header>
-  <h1>
-    <svg class="app-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="46" fill="#0d1b0f" stroke="#c4e538" stroke-width="2"/>
-      <circle cx="50" cy="50" r="36" fill="#c4e538"/>
-      <path d="M14 50 C 30 25, 70 25, 86 50" stroke="#1e5631" stroke-width="4" fill="none"/>
-      <path d="M14 50 C 30 75, 70 75, 86 50" stroke="#1e5631" stroke-width="4" fill="none"/>
-    </svg>
-    AI Tennis Coach
-  </h1>
-  <p>Upload your footage. Get shot-by-shot feedback. All in your browser.</p>
-</header>
 
-<div class="auth-bar" id="authBar">
-  <span id="loggedOutView">
-    <input type="email" id="authEmail" placeholder="email" style="width:140px;">
-    <input type="password" id="authPassword" placeholder="password" style="width:110px;">
-    <button id="signInBtn" style="padding:6px 12px; font-size:0.82rem;">Sign In</button>
-    <button class="secondary" id="signUpBtn" style="padding:6px 12px; font-size:0.82rem;">Sign Up</button>
-  </span>
-  <span id="loggedInView" style="display:none;">
-    <span class="user-email" id="userEmailLabel"></span>
-    <button class="secondary" id="signOutBtn" style="padding:6px 12px; font-size:0.82rem;">Sign Out</button>
-  </span>
+<div class="hero">
+  <svg class="app-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="46" fill="#0d1b0f" stroke="#c4e538" stroke-width="2"/>
+    <circle cx="50" cy="50" r="36" fill="#c4e538"/>
+    <path d="M14 50 C 30 25, 70 25, 86 50" stroke="#1e5631" stroke-width="4" fill="none"/>
+    <path d="M14 50 C 30 75, 70 75, 86 50" stroke="#1e5631" stroke-width="4" fill="none"/>
+  </svg>
+  <h1>Your tennis coach.<br><span class="accent">In your browser.</span></h1>
+  <p class="tagline">
+    Upload a video of yourself playing. Get instant AI feedback on every shot — technique, speed, spin, and personalized drills. No app to download. No subscription. 100% free.
+  </p>
+  <a href="app.html" class="cta-btn">Try it now →</a>
+  <p class="cta-note">No credit card. No signup required to try it.</p>
 </div>
 
-<div class="auth-bar" id="navBar" style="justify-content:center; gap: 4px; flex-wrap: wrap;">
-  <button class="secondary" id="navAnalyze">🎾 Analyze</button>
-  <button class="secondary" id="navDashboard">📈 Dashboard</button>
-  <button class="secondary" id="navCommunity">🌍 Community</button>
-  <button class="secondary" id="navLeaderboard">🏆 Leaderboard</button>
-  <button class="secondary" id="navProfile">👤 Profile</button>
-</div>
-
-<main>
-
-<div id="tabAnalyze">
-
-  <div class="card">
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-      <div class="upload-zone" id="uploadZone" style="padding:24px 12px;">
-        <strong>📁 Upload video</strong>
-        <p style="margin-top:4px;">MP4, MOV, or WebM</p>
-        <input type="file" id="fileInput" accept="video/*">
-      </div>
-      <div class="upload-zone" id="recordZone" style="padding:24px 12px;">
-        <strong>📹 Record now</strong>
-        <p style="margin-top:4px;">Use your device camera</p>
-      </div>
+<div class="section">
+  <h2 class="section-title">What it does</h2>
+  <div class="features">
+    <div class="feature">
+      <div class="icon">🎯</div>
+      <h3>Shot analysis</h3>
+      <p>Automatically detects forehands, backhands, serves, and volleys — plus spin (topspin, slice, flat).</p>
     </div>
-    <div style="margin-top:16px; font-size: 0.85rem; color: var(--muted); line-height: 1.6;">
-      <strong style="color: var(--text);">📹 For the most accurate analysis, film like this:</strong>
-      <ul style="margin: 8px 0 0; padding-left: 20px;">
-        <li><strong>Camera angle:</strong> side-on to the court (standing at the net post or fence, facing the baseline), not from directly behind the baseline.</li>
-        <li><strong>Camera position:</strong> mount on a tripod or steady surface — handheld footage makes ball tracking much less reliable.</li>
-        <li><strong>Distance:</strong> far enough back that a full court line (baseline or singles sideline) is visible in frame — you'll use it to calibrate speed.</li>
-        <li><strong>Lighting:</strong> film in good daylight or well-lit conditions; avoid heavy shadows across the court.</li>
-        <li><strong>Clip length:</strong> upload short clips (a single rally or a few shots) rather than a full match — keeps analysis fast and accurate.</li>
-        <li><strong>Background:</strong> avoid courts with yellow-green surfaces or backgrounds that closely match the ball color, since this can confuse ball tracking.</li>
-      </ul>
+    <div class="feature">
+      <div class="icon">⚡</div>
+      <h3>Real ball speed</h3>
+      <p>Tracks your ball frame by frame and gives you real mph, calibrated to your court dimensions.</p>
     </div>
-  </div>
-
-  <div class="card" id="recordCard" style="display:none;">
-    <h3 style="margin-top:0;">📹 Camera recording</h3>
-    <video id="recordPreview" autoplay muted playsinline style="width:100%; border-radius:10px; background:black;"></video>
-    <div class="controls" style="margin-top:12px;">
-      <button id="startRecordBtn">● Start Recording</button>
-      <button class="secondary" id="stopRecordBtn" style="display:none;">⏹ Stop</button>
-      <button class="secondary" id="switchCameraBtn">🔄 Switch camera</button>
-      <button class="secondary" id="cancelRecordBtn">Cancel</button>
-      <span id="recordStatus" style="color:var(--muted); font-size:0.85rem;"></span>
+    <div class="feature">
+      <div class="icon">🧠</div>
+      <h3>Personal coaching</h3>
+      <p>Biomechanics-based feedback on contact point, elbow extension, rotation, knee bend, and balance.</p>
     </div>
-  </div>
-
-  <div class="card" id="reviewCard" style="display:none;">
-
-    <div class="calib-banner" id="calibBanner">
-      <strong>📏 Calibrate for real speed (one-time per video)</strong>
-      <p style="color: var(--muted); margin: 8px 0;">
-        Pick a court line you can see clearly, enter its real-world length, then click both ends of it on the paused video frame below.
-        This lets the app convert pixel motion into real mph.
-      </p>
-      <div>
-        Reference line:
-        <select id="refLine">
-          <option value="78">Full baseline-to-baseline (78 ft)</option>
-          <option value="36">Singles court width (27 ft)</option>
-          <option value="21">Service box width (13.5 ft)</option>
-          <option value="custom">Custom distance</option>
-        </select>
-        <span id="customDistWrap" style="display:none;">
-          <input type="number" id="customDist" placeholder="feet" style="width:70px;">
-        </span>
-      </div>
-      <div class="calib-points">
-        Points placed: <span id="pointCount">0</span> / 2
-        <button class="secondary" id="resetCalib" style="margin-left:10px; padding: 4px 10px; font-size: 0.78rem;">Reset points</button>
-        <button class="secondary" id="skipCalib" style="margin-left:6px; padding: 4px 10px; font-size: 0.78rem;">Skip (use rough estimate)</button>
-      </div>
+    <div class="feature">
+      <div class="icon">📊</div>
+      <h3>Progress dashboard</h3>
+      <p>Track your improvement over weeks, see your report card, unlock badges and streaks as you practice.</p>
     </div>
-
-    <div class="video-wrap" id="videoWrap">
-      <video id="video" controls playsinline></video>
-      <canvas id="overlay"></canvas>
-      <canvas id="ballCanvas"></canvas>
-      <div class="popup" id="popup"></div>
+    <div class="feature">
+      <div class="icon">🎾</div>
+      <h3>Court heatmap</h3>
+      <p>See where every shot lands on the court so you can spot patterns in your placement.</p>
     </div>
-
-    <div class="controls">
-      <button id="analyzeBtn">▶ Analyze Video</button>
-      <button class="secondary" id="resetBtn">Upload Different Video</button>
-      <label class="toggle">
-        <input type="checkbox" id="popupToggle" checked>
-        Show coaching pop-ups
-      </label>
-      <label class="toggle">
-        <input type="checkbox" id="skeletonToggle" checked>
-        Show pose skeleton
-      </label>
-      <label class="toggle">
-        <input type="checkbox" id="multiPlayerToggle">
-        Multi-player mode
-      </label>
-      <label class="toggle" id="mySideWrap" style="display:none;">
-        My side:
-        <select id="mySide" style="background:#0d1b0f; border:1px solid #2f4f35; color:var(--text); padding:4px 8px; border-radius:6px; margin-left:6px;">
-          <option value="near">Near (bottom)</option>
-          <option value="far">Far (top)</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="controls" style="margin-top:8px; flex-wrap: wrap; gap: 6px;">
-      <span style="color: var(--muted); font-size: 0.8rem; margin-right: 6px;">Playback speed:</span>
-      <button class="secondary speed-btn" data-rate="1" style="padding:4px 10px; font-size:0.78rem; background:var(--lime); color:#15260f;">1x</button>
-      <button class="secondary speed-btn" data-rate="0.5" style="padding:4px 10px; font-size:0.78rem;">0.5x</button>
-      <button class="secondary speed-btn" data-rate="0.25" style="padding:4px 10px; font-size:0.78rem;">0.25x</button>
-      <button class="secondary speed-btn" data-rate="0.1" style="padding:4px 10px; font-size:0.78rem;">0.1x</button>
-      <button class="secondary" id="frameBackBtn" style="padding:4px 10px; font-size:0.78rem;">◀ frame</button>
-      <button class="secondary" id="frameFwdBtn" style="padding:4px 10px; font-size:0.78rem;">frame ▶</button>
-    </div>
-
-    <div id="analysisStatus" style="margin-top:10px; color: var(--muted); font-size: 0.85rem;"></div>
-
-    <div class="stats-grid" id="statsGrid" style="display:none;">
-      <div class="stat"><div class="val" id="statShots">0</div><div class="label">Shots Detected</div></div>
-      <div class="stat"><div class="val" id="statAvgSpeed">0</div><div class="label">Avg Ball Speed (mph)</div></div>
-      <div class="stat"><div class="val" id="statTopSpeed">0</div><div class="label">Top Ball Speed (mph)</div></div>
-      <div class="stat"><div class="val" id="statMain">-</div><div class="label">Most Used Shot</div></div>
-    </div>
-
-    <div id="publishBox" style="display:none; margin-top:14px; background:#101d12; border-radius:10px; padding:14px;">
-      <label class="toggle" style="margin-bottom:8px;">
-        <input type="checkbox" id="publishToggle">
-        Share this session publicly on the Community page
-      </label>
-      <input type="text" id="publishCaption" placeholder="Add a caption (optional)" style="width:100%; padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.85rem; display:none; margin-bottom:8px;">
-      <button id="confirmPublishBtn" style="padding:6px 12px; font-size:0.82rem;">Save sharing choice</button>
-      <span id="publishStatus" style="margin-left:8px; font-size:0.78rem; color:var(--muted);"></span>
-    </div>
-
-    <div id="reportCardWrap" style="margin-top:14px;">
-      <h4 style="margin:0 0 8px; color:var(--lime);">📋 Report card</h4>
-      <div id="reportCard" style="font-size:0.88rem;"></div>
-    </div>
-
-    <div id="ralliesWrap" style="margin-top:16px; display:none;">
-      <h4 style="margin:0 0 8px; color:var(--lime);">🎾 Rallies</h4>
-      <div id="ralliesList" style="font-size:0.85rem;"></div>
-    </div>
-
-    <div id="heatmapWrap" style="margin-top:16px; display:none;">
-      <h4 style="margin:0 0 8px; color:var(--lime);">📍 Contact zone heatmap</h4>
-      <p style="color:var(--muted); font-size:0.8rem; margin:0 0 8px;">
-        Click 4 corners of the court on the video frame to calibrate the top-down view:
-        near-left → near-right → far-right → far-left.
-        <button class="secondary" id="startCourtCalib" style="padding:3px 10px; font-size:0.75rem; margin-left:6px;">Start court calibration</button>
-        <button class="secondary" id="resetCourtCalib" style="padding:3px 10px; font-size:0.75rem;">Reset</button>
-        <span id="courtCalibStatus" style="margin-left:8px; font-size:0.78rem;"></span>
-      </p>
-      <svg id="courtHeatmap" viewBox="0 0 200 300" style="display:block; margin:0 auto; max-width:200px;"></svg>
-    </div>
-
-    <ul id="feedbackList"></ul>
-  </div>
-
-  <div class="card" id="historyCard" style="display:none;">
-    <h3 style="margin-top:0;">📊 Your saved sessions</h3>
-    <div id="historyList" style="font-size: 0.85rem; color: var(--muted);">No sessions yet.</div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin-top:0;">How this works <span class="badge">v0.3 prototype</span></h3>
-    <p style="color: var(--muted); font-size: 0.88rem; line-height:1.5;">
-      Pose tracking runs via MediaPipe. Ball tracking uses color + motion detection tuned for
-      standard yellow-green tennis balls (works best with good lighting and a ball that contrasts
-      against the court/background). Speed is converted to real mph using the calibration step,
-      where you mark a known court distance once per video. Without calibration, speed falls back
-      to a rough relative estimate. This is a lightweight CV approach, not a trained ball-detection
-      model — it can lose the ball on fast blurred frames or busy backgrounds, and accuracy improves
-      a lot with a clear side-on camera angle.
-    </p>
-  </div>
-
-</div>
-
-<div id="tabDashboard" style="display:none;">
-  <div class="card" id="dashboardLoggedOut">
-    <p style="color: var(--muted);">Sign in to see your progress dashboard.</p>
-  </div>
-  <div id="dashboardContent" style="display:none;">
-    <div class="card">
-      <h3 style="margin-top:0;">📈 Speed trend over time</h3>
-      <div id="speedChartWrap"><svg id="speedChart" viewBox="0 0 600 200" style="width:100%; height:auto;"></svg></div>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;">🎯 Shot mix</h3>
-      <div id="shotMixWrap" style="font-size:0.88rem;"></div>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;">📅 Weekly summaries <span style="color:var(--muted); font-size:0.75rem; font-weight:400;">(last 4 weeks)</span></h3>
-      <div id="weeklySummaries" style="font-size:0.88rem;"></div>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;">🏋️ Suggested drills</h3>
-      <div id="drillSuggestions" style="font-size:0.88rem; line-height:1.7;"></div>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0;">🔀 Compare two sessions</h3>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-        <select id="compareA" style="padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.82rem;"></select>
-        <select id="compareB" style="padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.82rem;"></select>
-      </div>
-      <button id="runCompareBtn" style="padding:6px 12px; font-size:0.82rem;">Compare</button>
-      <div id="compareResult" style="margin-top:14px; font-size:0.88rem;"></div>
+    <div class="feature">
+      <div class="icon">🌍</div>
+      <h3>Community</h3>
+      <p>Share sessions publicly, follow other players, and see who's hitting the fastest shots on the leaderboard.</p>
     </div>
   </div>
 </div>
 
-<div id="tabCommunity" style="display:none;">
-  <div class="card">
-    <h3 style="margin-top:0;">🌍 Community feed</h3>
-    <p style="color: var(--muted); font-size:0.85rem;">Sessions players have chosen to share publicly.</p>
-    <div id="communityFeed" style="margin-top:14px;">Loading...</div>
-  </div>
-</div>
-
-<div id="tabLeaderboard" style="display:none;">
-  <div class="card">
-    <h3 style="margin-top:0;">🏆 Leaderboard</h3>
-    <p style="color: var(--muted); font-size:0.85rem;">Top speeds by shot type. Opt in from your Profile tab to appear here.</p>
-    <div style="margin-top:14px;">
-      <label class="toggle" style="margin-bottom:10px;">
-        Filter by shot:
-        <select id="leaderboardShot" style="background:#0d1b0f; border:1px solid #2f4f35; color:var(--text); padding:6px 10px; border-radius:6px; margin-left:8px;">
-          <option value="all">All shots</option>
-          <option value="Forehand">Forehand</option>
-          <option value="Backhand">Backhand</option>
-          <option value="Serve / Overhead">Serve / Overhead</option>
-          <option value="Volley">Volley</option>
-        </select>
-      </label>
+<div class="section">
+  <h2 class="section-title">How it works</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>Record or upload</h4>
+      <p>Prop your phone on a tripod, film side-on to the court, and upload a clip — or record straight from your browser.</p>
     </div>
-    <div id="leaderboardList" style="margin-top:14px;">Loading...</div>
-  </div>
-</div>
-
-<div id="tabProfile" style="display:none;">
-  <div class="card" id="profileLoggedOut">
-    <p style="color: var(--muted);">Sign in to set up your profile.</p>
-  </div>
-  <div id="profileContent" style="display:none;">
-    <div class="card">
-      <h3 style="margin-top:0;">👤 Your profile</h3>
-      <label style="display:block; margin-bottom:10px;">
-        <div style="color:var(--muted); font-size:0.82rem; margin-bottom:4px;">Username</div>
-        <input type="text" id="profileUsername" placeholder="e.g. courtking" style="width:100%; padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text);">
-      </label>
-      <label style="display:block; margin-bottom:10px;">
-        <div style="color:var(--muted); font-size:0.82rem; margin-bottom:4px;">Playing level</div>
-        <select id="profileLevel" style="width:100%; padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text);">
-          <option value="beginner">Beginner</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
-        </select>
-      </label>
-      <label style="display:block; margin-bottom:10px;">
-        <div style="color:var(--muted); font-size:0.82rem; margin-bottom:4px;">Dominant hand (racket hand)</div>
-        <select id="profileHand" style="width:100%; padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text);">
-          <option value="right">Right</option>
-          <option value="left">Left</option>
-        </select>
-      </label>
-      <label class="toggle" style="margin-bottom:14px;">
-        <input type="checkbox" id="profileLeaderboardOptIn">
-        Show my top speeds on the public leaderboard
-      </label>
-      <button id="saveProfileBtn">Save profile</button>
-      <span id="profileSaveStatus" style="margin-left:8px; color:var(--muted); font-size:0.82rem;"></span>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Calibrate the court</h4>
+      <p>Click two ends of a court line so the app can convert pixel motion into real speed.</p>
     </div>
-
-    <div class="card">
-      <h3 style="margin-top:0;">🏅 Personal bests</h3>
-      <div id="personalBestsBox" style="font-size:0.88rem;"></div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>Hit analyze</h4>
+      <p>Watch the AI track your body and the ball frame by frame, then give you a full breakdown of every shot.</p>
     </div>
-
-    <div class="card">
-      <h3 style="margin-top:0;">🎖 Badges & streaks</h3>
-      <div id="badgesBox" style="font-size:0.88rem;"></div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <h4>Improve</h4>
+      <p>Review your report card, follow the personalized drills, and track your progress over time.</p>
     </div>
   </div>
 </div>
 
-</main>
-
-<div id="onboardingModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:100; align-items:center; justify-content:center; padding:20px;">
-  <div style="background:#16241a; border:1px solid var(--lime); border-radius:14px; max-width:520px; padding:24px; color:var(--text);">
-    <h2 style="margin-top:0;">Welcome to AI Tennis Coach 🎾</h2>
-    <p style="color:var(--muted); line-height:1.6;">Quick tour before you start:</p>
-    <ol style="color:var(--muted); line-height:1.7; padding-left:20px;">
-      <li><strong style="color:var(--text);">Film side-on</strong> from the fence, not from behind the baseline. Tripod = way better results.</li>
-      <li><strong style="color:var(--text);">Upload short clips</strong> (a rally or a few shots), not full matches.</li>
-      <li><strong style="color:var(--text);">Calibrate once</strong> by clicking two ends of a court line — this gives you real mph speeds.</li>
-      <li><strong style="color:var(--text);">Hit Analyze</strong> and watch the pose skeleton + ball tracking do the work.</li>
-      <li><strong style="color:var(--text);">Set your handedness</strong> in the Profile tab so classification is accurate for you.</li>
-    </ol>
-    <button id="onboardingCloseBtn" style="margin-top:8px;">Got it, let's go</button>
-  </div>
+<div class="bottom-cta">
+  <h2>Ready to see your tennis game like never before?</h2>
+  <p>It's free. It runs in your browser. It takes 30 seconds to try.</p>
+  <a href="app.html" class="cta-btn">Get started →</a>
 </div>
 
-<footer>AI Tennis Coach — built with MediaPipe Pose, runs 100% client-side.</footer>
-
-<script type="module">
-import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-// ---------- Supabase setup ----------
-// Replace these two values with your own project's URL and anon (public) key,
-// found in Supabase dashboard → Project Settings → API.
-const SUPABASE_URL = "https://stmksyzukrtiwlglwlpt.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0bWtzeXp1a3J0aXdsZ2x3bHB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NzcyMjMsImV4cCI6MjA5ODM1MzIyM30.RJSU8Xxq03NRgab8fd0OAdeifXGIR3SBc7izLOQ1Qz4";
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const authEmail = document.getElementById('authEmail');
-const authPassword = document.getElementById('authPassword');
-const signInBtn = document.getElementById('signInBtn');
-const signUpBtn = document.getElementById('signUpBtn');
-const signOutBtn = document.getElementById('signOutBtn');
-const loggedOutView = document.getElementById('loggedOutView');
-const loggedInView = document.getElementById('loggedInView');
-const userEmailLabel = document.getElementById('userEmailLabel');
-const historyCard = document.getElementById('historyCard');
-const historyList = document.getElementById('historyList');
-
-let currentUser = null;
-let userProfile = null;
-let cachedPBs = null;
-
-async function refreshAuthUI() {
-  const { data: { user } } = await supabase.auth.getUser();
-  currentUser = user;
-  cachedPBs = null;
-  if (user) {
-    loggedOutView.style.display = 'none';
-    loggedInView.style.display = 'inline';
-    userEmailLabel.textContent = user.email;
-    historyCard.style.display = 'block';
-    if (typeof loadUserProfile === 'function') await loadUserProfile();
-    loadSessions();
-  } else {
-    loggedOutView.style.display = 'inline';
-    loggedInView.style.display = 'none';
-    historyCard.style.display = 'none';
-    userProfile = null;
-  }
-}
-
-signUpBtn.addEventListener('click', async () => {
-  const { error } = await supabase.auth.signUp({
-    email: authEmail.value,
-    password: authPassword.value
-  });
-  if (error) { alert(error.message); return; }
-  alert('Account created. Check your email if confirmation is required, then sign in.');
-});
-
-signInBtn.addEventListener('click', async () => {
-  const { error } = await supabase.auth.signInWithPassword({
-    email: authEmail.value,
-    password: authPassword.value
-  });
-  if (error) { alert(error.message); return; }
-  refreshAuthUI();
-});
-
-signOutBtn.addEventListener('click', async () => {
-  await supabase.auth.signOut();
-  refreshAuthUI();
-});
-
-async function loadSessions() {
-  if (!currentUser) return;
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    historyList.textContent = 'Could not load sessions: ' + error.message;
-    return;
-  }
-  if (!data || data.length === 0) {
-    historyList.textContent = 'No sessions yet — analyze a video and it will be saved here.';
-    return;
-  }
-  historyList.innerHTML = '';
-  data.forEach(s => {
-    const div = document.createElement('div');
-    div.className = 'session-item';
-    const date = new Date(s.created_at).toLocaleString();
-    div.innerHTML = `
-      <span><strong>${s.shot_count} shots</strong> &middot; avg ${s.avg_speed} mph &middot; top ${s.top_speed} mph &middot; mostly ${s.main_shot}</span>
-      <span class="meta">${date}</span>
-    `;
-    historyList.appendChild(div);
-  });
-}
-
-let lastSavedSessionId = null;
-
-async function saveSessionToSupabase(summary) {
-  if (!currentUser) return; // not logged in, skip silently
-  const { data, error } = await supabase.from('sessions').insert({
-    user_id: currentUser.id,
-    shot_count: summary.shotCount,
-    avg_speed: summary.avgSpeed,
-    top_speed: summary.topSpeed,
-    main_shot: summary.mainShot,
-    events: summary.events,
-    is_public: false,
-    caption: ''
-  }).select().single();
-
-  if (error) {
-    console.error('Save failed:', error.message);
-  } else {
-    lastSavedSessionId = data.id;
-    loadSessions();
-  }
-}
-
-async function updatePublishStatus() {
-  if (!lastSavedSessionId) return;
-  const isPublic = document.getElementById('publishToggle').checked;
-  const caption = document.getElementById('publishCaption').value;
-  const { error } = await supabase
-    .from('sessions')
-    .update({ is_public: isPublic, caption: caption })
-    .eq('id', lastSavedSessionId);
-  if (error) console.error('Publish update failed:', error.message);
-}
-
-refreshAuthUI();
-
-// ---------- Tab navigation ----------
-const tabAnalyze = document.getElementById('tabAnalyze');
-const tabDashboard = document.getElementById('tabDashboard');
-const tabCommunity = document.getElementById('tabCommunity');
-const navAnalyze = document.getElementById('navAnalyze');
-const navDashboard = document.getElementById('navDashboard');
-const navCommunity = document.getElementById('navCommunity');
-
-function showTab(tab) {
-  tabAnalyze.style.display = tab === 'analyze' ? 'block' : 'none';
-  tabDashboard.style.display = tab === 'dashboard' ? 'block' : 'none';
-  tabCommunity.style.display = tab === 'community' ? 'block' : 'none';
-  document.getElementById('tabLeaderboard').style.display = tab === 'leaderboard' ? 'block' : 'none';
-  document.getElementById('tabProfile').style.display = tab === 'profile' ? 'block' : 'none';
-  if (tab === 'dashboard') renderDashboard();
-  if (tab === 'community') loadCommunityFeed();
-  if (tab === 'leaderboard') loadLeaderboard();
-  if (tab === 'profile') renderProfile();
-}
-navAnalyze.addEventListener('click', () => showTab('analyze'));
-navDashboard.addEventListener('click', () => showTab('dashboard'));
-navCommunity.addEventListener('click', () => showTab('community'));
-document.getElementById('navLeaderboard').addEventListener('click', () => showTab('leaderboard'));
-document.getElementById('navProfile').addEventListener('click', () => showTab('profile'));
-
-// ---------- Dashboard ----------
-const dashboardLoggedOut = document.getElementById('dashboardLoggedOut');
-const dashboardContent = document.getElementById('dashboardContent');
-
-async function renderDashboard() {
-  if (!currentUser) {
-    dashboardLoggedOut.style.display = 'block';
-    dashboardContent.style.display = 'none';
-    return;
-  }
-  dashboardLoggedOut.style.display = 'none';
-  dashboardContent.style.display = 'block';
-
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: true });
-
-  if (error || !data || data.length === 0) {
-    document.getElementById('speedChartWrap').innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">No sessions yet — analyze a video first.</p>';
-    document.getElementById('shotMixWrap').innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Nothing to show yet.</p>';
-    document.getElementById('drillSuggestions').innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Drill suggestions will appear once you have a few sessions logged.</p>';
-    document.getElementById('weeklySummaries').innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Weekly summaries appear here once you have sessions.</p>';
-    return;
-  }
-
-  drawSpeedChart(data);
-  renderShotMix(data);
-  renderDrillSuggestions(data);
-  renderWeeklySummaries(data);
-  loadComparisonOptions();
-}
-
-function drawSpeedChart(sessions) {
-  const svg = document.getElementById('speedChart');
-  const w = 600, h = 200, pad = 30;
-  const speeds = sessions.map(s => s.avg_speed || 0);
-  const maxSpeed = Math.max(...speeds, 10);
-  const stepX = (w - pad*2) / Math.max(1, sessions.length - 1);
-
-  let points = sessions.map((s, i) => {
-    const x = pad + i * stepX;
-    const y = h - pad - ((s.avg_speed || 0) / maxSpeed) * (h - pad*2);
-    return `${x},${y}`;
-  }).join(' ');
-
-  let dots = sessions.map((s, i) => {
-    const x = pad + i * stepX;
-    const y = h - pad - ((s.avg_speed || 0) / maxSpeed) * (h - pad*2);
-    return `<circle cx="${x}" cy="${y}" r="4" fill="#c4e538"></circle>`;
-  }).join('');
-
-  svg.innerHTML = `
-    <polyline points="${points}" fill="none" stroke="#c4e538" stroke-width="2"/>
-    ${dots}
-    <line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#2f4f35" stroke-width="1"/>
-  `;
-}
-
-function renderShotMix(sessions) {
-  const counts = {};
-  sessions.forEach(s => {
-    counts[s.main_shot] = (counts[s.main_shot] || 0) + 1;
-  });
-  const total = sessions.length;
-  const wrap = document.getElementById('shotMixWrap');
-  wrap.innerHTML = Object.entries(counts).map(([shot, count]) => {
-    const pct = Math.round((count / total) * 100);
-    return `
-      <div style="margin-bottom:8px;">
-        <div style="display:flex; justify-content:space-between; color:var(--muted); margin-bottom:3px;">
-          <span>${shot}</span><span>${pct}%</span>
-        </div>
-        <div style="background:#101d12; border-radius:6px; height:8px;">
-          <div style="background:#c4e538; height:8px; border-radius:6px; width:${pct}%;"></div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderDrillSuggestions(sessions) {
-  const issueCounts = {};
-  sessions.forEach(s => {
-    (s.events || []).forEach(e => {
-      const note = (e.note || '').toLowerCase();
-      if (note.includes('late') || note.includes('close to body')) issueCounts['late_contact'] = (issueCounts['late_contact']||0)+1;
-      if (note.includes('higher')) issueCounts['low_toss'] = (issueCounts['low_toss']||0)+1;
-      if (note.includes('follow-through')) issueCounts['follow_through'] = (issueCounts['follow_through']||0)+1;
-    });
-  });
-
-  const drillMap = {
-    late_contact: { title: 'Contact point drill', desc: 'Several shots show late/close contact. Try shadow swings focusing on meeting the ball further out in front, and feed-ball drills where a partner feeds balls slightly earlier than feels comfortable.' },
-    low_toss: { title: 'Serve toss & extension drill', desc: 'Your serve/overhead contact point is often low. Practice tossing against a wall, aiming to release the ball at full extension consistently before adding the swing back in.' },
-    follow_through: { title: 'Follow-through extension drill', desc: 'Backhand follow-through looks short across sessions. Try exaggerated full-extension shadow swings, finishing with the racket high over the opposite shoulder.' }
-  };
-
-  const sorted = Object.entries(issueCounts).sort((a,b) => b[1]-a[1]);
-  const box = document.getElementById('drillSuggestions');
-
-  if (sorted.length === 0) {
-    box.innerHTML = '<p style="color:var(--muted);">No recurring issues flagged yet — keep logging sessions to get personalized drills.</p>';
-    return;
-  }
-
-  box.innerHTML = sorted.slice(0, 3).map(([key, count]) => {
-    const d = drillMap[key];
-    if (!d) return '';
-    return `<div style="margin-bottom:14px; background:#101d12; padding:12px; border-radius:8px;">
-      <strong style="color:var(--lime);">${d.title}</strong> <span style="color:var(--muted); font-size:0.78rem;">(flagged ${count}x)</span>
-      <p style="margin:6px 0 0; color:var(--muted);">${d.desc}</p>
-    </div>`;
-  }).join('');
-}
-
-function renderWeeklySummaries(sessions) {
-  const box = document.getElementById('weeklySummaries');
-  const now = new Date();
-
-  // build 4 week buckets, most recent first, each 7 days long
-  const buckets = [];
-  for (let i = 0; i < 4; i++) {
-    const end = new Date(now);
-    end.setDate(end.getDate() - i * 7);
-    const start = new Date(end);
-    start.setDate(start.getDate() - 7);
-    buckets.push({ start, end, sessions: [] });
-  }
-
-  sessions.forEach(s => {
-    const dt = new Date(s.created_at);
-    // sessions older than 4 weeks are ignored (the "gets rid of old ones" behavior)
-    for (const b of buckets) {
-      if (dt >= b.start && dt < b.end) { b.sessions.push(s); break; }
-    }
-  });
-
-  const rows = buckets.map((b, i) => {
-    const label = i === 0 ? 'This week' : (i === 1 ? 'Last week' : `${i} weeks ago`);
-    if (b.sessions.length === 0) {
-      return `<div style="background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:6px; color:var(--muted);">
-        <strong style="color:var(--text);">${label}</strong> — no sessions
-      </div>`;
-    }
-    const totalShots = b.sessions.reduce((a,s) => a + (s.shot_count || 0), 0);
-    const avg = Math.round(b.sessions.reduce((a,s) => a + (s.avg_speed || 0), 0) / b.sessions.length);
-    const top = Math.max(...b.sessions.map(s => s.top_speed || 0));
-    const shotMix = {};
-    b.sessions.forEach(s => { shotMix[s.main_shot] = (shotMix[s.main_shot] || 0) + 1; });
-    const mainShot = Object.entries(shotMix).sort((a,b) => b[1]-a[1])[0]?.[0] || '-';
-
-    // compare avg speed to prior week
-    let deltaStr = '';
-    const prior = buckets[i + 1];
-    if (prior && prior.sessions.length > 0) {
-      const priorAvg = Math.round(prior.sessions.reduce((a,s) => a + (s.avg_speed || 0), 0) / prior.sessions.length);
-      if (priorAvg > 0) {
-        const delta = Math.round(((avg - priorAvg) / priorAvg) * 100);
-        const color = delta >= 0 ? 'var(--lime)' : '#e58585';
-        deltaStr = ` <span style="color:${color}; font-size:0.78rem;">(${delta >= 0 ? '+' : ''}${delta}% vs prior)</span>`;
-      }
-    }
-
-    return `<div style="background:#101d12; padding:12px 14px; border-radius:8px; margin-bottom:6px;">
-      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
-        <strong>${label}</strong>
-        <span style="color:var(--muted); font-size:0.78rem;">${b.sessions.length} session${b.sessions.length === 1 ? '' : 's'}</span>
-      </div>
-      <div style="color:var(--muted); font-size:0.82rem;">
-        ${totalShots} shots &middot; avg <span style="color:var(--text);">${avg} mph</span>${deltaStr} &middot; top <span style="color:var(--text);">${top} mph</span> &middot; mostly ${mainShot}
-      </div>
-    </div>`;
-  }).join('');
-
-  box.innerHTML = rows;
-}
-
-// ---------- Publish to community ----------
-const publishToggleEl = () => document.getElementById('publishToggle');
-const publishCaptionEl = () => document.getElementById('publishCaption');
-
-document.addEventListener('change', (e) => {
-  if (e.target && e.target.id === 'publishToggle') {
-    publishCaptionEl().style.display = e.target.checked ? 'block' : 'none';
-  }
-});
-
-document.addEventListener('click', async (e) => {
-  if (e.target && e.target.id === 'confirmPublishBtn') {
-    await updatePublishStatus();
-    document.getElementById('publishStatus').textContent = 'Saved.';
-  }
-});
-
-async function loadCommunityFeed() {
-  const feed = document.getElementById('communityFeed');
-  feed.innerHTML = 'Loading...';
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('is_public', true)
-    .order('created_at', { ascending: false })
-    .limit(50);
-
-  if (error) {
-    feed.innerHTML = `<p style="color:var(--muted);">Could not load community feed: ${error.message}</p>`;
-    return;
-  }
-  if (!data || data.length === 0) {
-    feed.innerHTML = '<p style="color:var(--muted);">No public sessions yet — be the first to share one from the Analyze tab.</p>';
-    return;
-  }
-
-  // fetch usernames for authors
-  const userIds = [...new Set(data.map(s => s.user_id))];
-  const { data: profs } = await supabase.from('profiles').select('id, username').in('id', userIds);
-  const nameMap = Object.fromEntries((profs || []).map(p => [p.id, p.username || 'anonymous']));
-
-  // fetch which of these the current user follows
-  let followingSet = new Set();
-  if (currentUser) {
-    const { data: follows } = await supabase.from('follows').select('following_id').eq('follower_id', currentUser.id);
-    followingSet = new Set((follows || []).map(f => f.following_id));
-  }
-
-  feed.innerHTML = data.map(s => {
-    const date = new Date(s.created_at).toLocaleDateString();
-    const authorName = nameMap[s.user_id] || 'anonymous';
-    const isFollowing = followingSet.has(s.user_id);
-    const isSelf = currentUser && s.user_id === currentUser.id;
-    return `
-      <div class="session-item" style="display:block;" data-session-id="${s.id}" data-user-id="${s.user_id}">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <div>
-            <strong>${escapeHtml(authorName)}</strong>
-            <span style="color:var(--muted); font-size:0.78rem; margin-left:6px;">${date}</span>
-          </div>
-          ${isSelf ? '' : `<button class="follow-btn" data-target="${s.user_id}" style="padding:4px 12px; font-size:0.78rem;">${isFollowing ? 'Following' : 'Follow'}</button>`}
-        </div>
-        <div style="margin-top:8px;">${s.shot_count} shots &middot; avg ${s.avg_speed} mph &middot; top ${s.top_speed} mph &middot; mostly ${s.main_shot}</div>
-        ${s.caption ? `<p style="margin:8px 0 0; color:var(--text);">${escapeHtml(s.caption)}</p>` : ''}
-        <div class="comments-block" style="margin-top:10px;">
-          <div class="comments-list" id="cmts-${s.id}"></div>
-          <div style="display:flex; gap:6px; margin-top:6px;">
-            <input type="text" class="comment-input" data-session="${s.id}" placeholder="Add a comment..." style="flex:1; padding:6px 10px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.82rem;">
-            <button class="comment-submit" data-session="${s.id}" style="padding:6px 12px; font-size:0.78rem;">Post</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  // load comments for each session
-  data.forEach(s => loadCommentsFor(s.id, document.getElementById('cmts-' + s.id)));
-
-  // wire follow buttons
-  document.querySelectorAll('.follow-btn').forEach(btn => {
-    btn.addEventListener('click', () => toggleFollow(btn.dataset.target, btn));
-  });
-  // wire comment submissions
-  document.querySelectorAll('.comment-submit').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const sid = btn.dataset.session;
-      const input = document.querySelector(`.comment-input[data-session="${sid}"]`);
-      addComment(sid, input, document.getElementById('cmts-' + sid));
-    });
-  });
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-// ---------- Onboarding ----------
-const onboardingModal = document.getElementById('onboardingModal');
-const onboardingCloseBtn = document.getElementById('onboardingCloseBtn');
-if (!localStorage.getItem('onboardedV1')) {
-  onboardingModal.style.display = 'flex';
-}
-onboardingCloseBtn.addEventListener('click', () => {
-  localStorage.setItem('onboardedV1', '1');
-  onboardingModal.style.display = 'none';
-});
-
-// ---------- Profile ----------
-async function loadUserProfile() {
-  if (!currentUser) { userProfile = null; return null; }
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
-  if (error) { console.error(error); return null; }
-  userProfile = data;
-  return data;
-}
-
-async function renderProfile() {
-  const loggedOut = document.getElementById('profileLoggedOut');
-  const content = document.getElementById('profileContent');
-  if (!currentUser) { loggedOut.style.display = 'block'; content.style.display = 'none'; return; }
-  loggedOut.style.display = 'none'; content.style.display = 'block';
-
-  await loadUserProfile();
-  if (userProfile) {
-    document.getElementById('profileUsername').value = userProfile.username || '';
-    document.getElementById('profileLevel').value = userProfile.playing_level || 'beginner';
-    document.getElementById('profileHand').value = userProfile.handedness || 'right';
-    document.getElementById('profileLeaderboardOptIn').checked = !!userProfile.leaderboard_opt_in;
-  }
-  renderPersonalBests();
-  renderBadges();
-}
-
-document.addEventListener('click', async (e) => {
-  if (e.target && e.target.id === 'saveProfileBtn') {
-    if (!currentUser) return;
-    const payload = {
-      id: currentUser.id,
-      username: document.getElementById('profileUsername').value.trim(),
-      playing_level: document.getElementById('profileLevel').value,
-      handedness: document.getElementById('profileHand').value,
-      leaderboard_opt_in: document.getElementById('profileLeaderboardOptIn').checked
-    };
-    const { error } = await supabase.from('profiles').upsert(payload);
-    document.getElementById('profileSaveStatus').textContent = error ? ('Error: ' + error.message) : 'Saved.';
-    if (!error) userProfile = payload;
-  }
-});
-
-// ---------- Personal best celebration ----------
-async function checkPersonalBests(newEvents) {
-  if (!currentUser) return;
-  if (!cachedPBs) {
-    const { data } = await supabase.from('sessions').select('events').eq('user_id', currentUser.id);
-    cachedPBs = {};
-    (data || []).forEach(s => (s.events || []).forEach(e => {
-      if (!cachedPBs[e.type] || e.speedEst > cachedPBs[e.type]) cachedPBs[e.type] = e.speedEst;
-    }));
-  }
-  const newBests = {};
-  newEvents.forEach(e => {
-    if (!newBests[e.type] || e.speedEst > newBests[e.type]) newBests[e.type] = e.speedEst;
-  });
-  const broken = [];
-  Object.entries(newBests).forEach(([shot, mph]) => {
-    if (!cachedPBs[shot] || mph > cachedPBs[shot]) {
-      broken.push({ shot, mph, prev: cachedPBs[shot] || 0 });
-      cachedPBs[shot] = mph;
-    }
-  });
-  if (broken.length > 0) {
-    const msg = broken.map(b => `${b.shot}: ${b.mph} mph${b.prev ? ` (was ${b.prev})` : ''}`).join(' • ');
-    analysisStatus.innerHTML = `🎉 <span style="color:var(--lime); font-weight:600;">Personal best!</span> ${msg}`;
-  }
-}
-
-// ---------- Personal bests display ----------
-async function renderPersonalBests() {
-  const box = document.getElementById('personalBestsBox');
-  if (!currentUser) return;
-  const { data } = await supabase.from('sessions').select('events').eq('user_id', currentUser.id);
-  if (!data || data.length === 0) { box.innerHTML = '<p style="color:var(--muted);">Analyze a session to see your personal bests.</p>'; return; }
-  const bests = {};
-  data.forEach(s => {
-    (s.events || []).forEach(e => {
-      if (!bests[e.type] || e.speedEst > bests[e.type]) bests[e.type] = e.speedEst;
-    });
-  });
-  const rows = Object.entries(bests).map(([shot, mph]) => `
-    <div style="display:flex; justify-content:space-between; background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:8px;">
-      <span>${shot}</span><strong style="color:var(--lime);">${mph} mph</strong>
-    </div>`).join('');
-  box.innerHTML = rows || '<p style="color:var(--muted);">No shots recorded yet.</p>';
-}
-
-// ---------- Badges & streaks ----------
-async function renderBadges() {
-  const box = document.getElementById('badgesBox');
-  if (!currentUser) return;
-  const { data } = await supabase.from('sessions').select('created_at').eq('user_id', currentUser.id).order('created_at', { ascending: false });
-  if (!data || data.length === 0) { box.innerHTML = '<p style="color:var(--muted);">Analyze a session to start earning badges.</p>'; return; }
-
-  const totalSessions = data.length;
-  const dates = data.map(s => new Date(s.created_at).toDateString());
-  const uniqueDates = [...new Set(dates)];
-
-  // streak: consecutive days ending at today or yesterday
-  let streak = 0;
-  const today = new Date(); today.setHours(0,0,0,0);
-  let cursor = new Date(today);
-  const dateSet = new Set(uniqueDates);
-  while (dateSet.has(cursor.toDateString())) { streak++; cursor.setDate(cursor.getDate() - 1); }
-  if (streak === 0) {
-    // maybe streak ended yesterday
-    cursor = new Date(today); cursor.setDate(cursor.getDate() - 1);
-    while (dateSet.has(cursor.toDateString())) { streak++; cursor.setDate(cursor.getDate() - 1); }
-  }
-
-  const badges = [];
-  if (totalSessions >= 1) badges.push({ icon: '🎾', label: 'First Serve', desc: 'Analyzed your first session' });
-  if (totalSessions >= 5) badges.push({ icon: '🔥', label: 'Getting Serious', desc: '5 sessions logged' });
-  if (totalSessions >= 20) badges.push({ icon: '⭐', label: 'Court Regular', desc: '20 sessions logged' });
-  if (totalSessions >= 50) badges.push({ icon: '🏆', label: 'Dedicated', desc: '50 sessions logged' });
-  if (streak >= 3) badges.push({ icon: '📅', label: '3-Day Streak', desc: 'Practiced 3 days in a row' });
-  if (streak >= 7) badges.push({ icon: '🚀', label: 'Week Warrior', desc: '7-day streak' });
-
-  box.innerHTML = `
-    <div style="display:flex; gap:14px; margin-bottom:14px;">
-      <div style="flex:1; background:#101d12; padding:14px; border-radius:10px; text-align:center;">
-        <div style="font-size:1.6rem; color:var(--lime); font-weight:700;">${streak}</div>
-        <div style="color:var(--muted); font-size:0.78rem;">day streak</div>
-      </div>
-      <div style="flex:1; background:#101d12; padding:14px; border-radius:10px; text-align:center;">
-        <div style="font-size:1.6rem; color:var(--lime); font-weight:700;">${totalSessions}</div>
-        <div style="color:var(--muted); font-size:0.78rem;">total sessions</div>
-      </div>
-    </div>
-    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:10px;">
-      ${badges.map(b => `
-        <div style="background:#101d12; padding:12px; border-radius:10px; text-align:center;">
-          <div style="font-size:1.6rem;">${b.icon}</div>
-          <div style="color:var(--lime); font-size:0.82rem; font-weight:600; margin-top:4px;">${b.label}</div>
-          <div style="color:var(--muted); font-size:0.7rem; margin-top:2px;">${b.desc}</div>
-        </div>`).join('') || '<p style="color:var(--muted); grid-column: 1 / -1;">No badges earned yet — keep practicing!</p>'}
-    </div>
-  `;
-}
-
-// ---------- Leaderboard ----------
-async function loadLeaderboard() {
-  const list = document.getElementById('leaderboardList');
-  const shot = document.getElementById('leaderboardShot').value;
-  list.innerHTML = 'Loading...';
-
-  // fetch opted-in profiles + their sessions
-  const { data: optedProfiles } = await supabase.from('profiles').select('id, username').eq('leaderboard_opt_in', true);
-  if (!optedProfiles || optedProfiles.length === 0) {
-    list.innerHTML = '<p style="color:var(--muted);">No one has opted in yet. Be the first from your Profile tab.</p>';
-    return;
-  }
-  const idMap = Object.fromEntries(optedProfiles.map(p => [p.id, p.username || 'anonymous']));
-  const { data: sessions } = await supabase.from('sessions').select('user_id, events').in('user_id', optedProfiles.map(p => p.id));
-
-  const bests = {}; // user_id -> top speed for chosen shot
-  (sessions || []).forEach(s => {
-    (s.events || []).forEach(e => {
-      if (shot !== 'all' && e.type !== shot) return;
-      if (!bests[s.user_id] || e.speedEst > bests[s.user_id].mph) {
-        bests[s.user_id] = { mph: e.speedEst, type: e.type };
-      }
-    });
-  });
-
-  const rows = Object.entries(bests).sort((a,b) => b[1].mph - a[1].mph).slice(0, 50);
-  if (rows.length === 0) { list.innerHTML = '<p style="color:var(--muted);">No qualifying shots yet.</p>'; return; }
-
-  list.innerHTML = rows.map(([uid, data], i) => `
-    <div style="display:flex; justify-content:space-between; align-items:center; background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:8px;">
-      <span><strong style="color:var(--lime); margin-right:8px;">#${i+1}</strong>${escapeHtml(idMap[uid])}</span>
-      <span><strong style="color:var(--lime);">${data.mph} mph</strong> <span style="color:var(--muted); font-size:0.78rem;">(${data.type})</span></span>
-    </div>
-  `).join('');
-}
-
-document.addEventListener('change', (e) => {
-  if (e.target && e.target.id === 'leaderboardShot') loadLeaderboard();
-});
-
-// ---------- Consistency score helper ----------
-function calcConsistency(speeds) {
-  if (speeds.length < 2) return null;
-  const mean = speeds.reduce((a,b) => a+b, 0) / speeds.length;
-  const variance = speeds.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / speeds.length;
-  const stdev = Math.sqrt(variance);
-  // convert to 0-100 score: lower stdev relative to mean = higher consistency
-  const cv = stdev / mean; // coefficient of variation
-  return Math.max(0, Math.min(100, Math.round(100 - cv * 200)));
-}
-
-function gradeSpeed(shot, avgMph) {
-  // rough thresholds — adjust by shot type
-  const thresholds = {
-    'Serve / Overhead': [80, 65, 50, 35],
-    'Forehand': [65, 50, 40, 30],
-    'Backhand': [55, 45, 35, 25],
-    'Volley': [45, 35, 28, 20]
-  };
-  const t = thresholds[shot] || [60, 45, 35, 25];
-  if (avgMph >= t[0]) return 'A';
-  if (avgMph >= t[1]) return 'B';
-  if (avgMph >= t[2]) return 'C';
-  if (avgMph >= t[3]) return 'D';
-  return 'F';
-}
-
-// ---------- Slow-mo scrub button wiring ----------
-document.addEventListener('click', (e) => {
-  if (e.target.classList.contains('speed-btn')) {
-    setPlaybackSpeed(parseFloat(e.target.dataset.rate));
-  }
-  if (e.target.id === 'frameBackBtn') stepFrame(-1);
-  if (e.target.id === 'frameFwdBtn') stepFrame(1);
-  if (e.target.id === 'runCompareBtn') renderComparison();
-});
-
-// ---------- Court calibration ----------
-let courtCalibMode = false;
-document.addEventListener('click', (e) => {
-  if (e.target.id === 'startCourtCalib') {
-    courtCorners = [];
-    courtCalibMode = true;
-    document.getElementById('courtCalibStatus').textContent = 'Click near-left corner…';
-    calibDots.forEach(d => d.remove());
-  }
-  if (e.target.id === 'resetCourtCalib') {
-    courtCorners = [];
-    courtCalibMode = false;
-    document.getElementById('courtCalibStatus').textContent = '';
-    renderCourtHeatmap();
-  }
-});
-
-// hook into existing overlay click for court corners
-overlay.addEventListener('click', (e) => {
-  if (!courtCalibMode) return;
-  const rect = overlay.getBoundingClientRect();
-  const nx = (e.clientX - rect.left) / rect.width;
-  const ny = (e.clientY - rect.top) / rect.height;
-  courtCorners.push({ x: nx, y: ny });
-  const labels = ['near-right', 'far-right', 'far-left', 'done'];
-  if (courtCorners.length < 4) {
-    document.getElementById('courtCalibStatus').textContent = `Click ${labels[courtCorners.length-1]} corner…`;
-  } else {
-    document.getElementById('courtCalibStatus').textContent = 'Court calibrated.';
-    courtCalibMode = false;
-    renderCourtHeatmap();
-  }
-});
-
-
-function segmentRallies(motionSamples, events) {
-  if (motionSamples.length === 0) return events.length > 0 ? [{ start: 0, end: 999, shots: events }] : [];
-  const motions = motionSamples.map(m => m.motion);
-  const maxMotion = Math.max(...motions);
-  const threshold = maxMotion * 0.08; // 8% of peak = "quiet" (between rallies)
-  const gapDuration = 2.0; // seconds of quiet = rally boundary
-
-  const rallies = [];
-  let rallyStart = motionSamples[0].time;
-  let quietStart = null;
-
-  motionSamples.forEach((s, i) => {
-    if (s.motion < threshold) {
-      if (quietStart === null) quietStart = s.time;
-    } else {
-      if (quietStart !== null && s.time - quietStart > gapDuration) {
-        // close previous rally
-        rallies.push({ start: rallyStart, end: quietStart });
-        rallyStart = s.time;
-      }
-      quietStart = null;
-    }
-  });
-  rallies.push({ start: rallyStart, end: motionSamples[motionSamples.length-1].time });
-
-  // attach shots to their rally
-  rallies.forEach(r => {
-    r.shots = events.filter(e => e.time >= r.start && e.time <= r.end);
-  });
-  // drop rallies with 0 shots
-  return rallies.filter(r => r.shots.length > 0);
-}
-
-// ---------- Contact zone heatmap ----------
-// The user clicks 4 corners of the court in the video (baseline-left, baseline-right,
-// far-baseline-right, far-baseline-left) to map ball positions onto a top-down court.
-let courtCorners = []; // array of {x,y} in overlay-normalized coords (0-1)
-
-function renderCourtHeatmap() {
-  const svg = document.getElementById('courtHeatmap');
-  if (!svg) return;
-  const w = 200, h = 300; // top-down court aspect
-  // draw court outline
-  let content = `
-    <rect x="10" y="10" width="${w-20}" height="${h-20}" fill="#0d1b0f" stroke="#c4e538" stroke-width="2"/>
-    <line x1="10" y1="${h/2}" x2="${w-10}" y2="${h/2}" stroke="#c4e538" stroke-width="2"/>
-    <line x1="${w/2}" y1="60" x2="${w/2}" y2="${h-60}" stroke="#c4e538" stroke-width="1"/>
-    <line x1="10" y1="60" x2="${w-10}" y2="60" stroke="#c4e538" stroke-width="1" stroke-dasharray="3,3"/>
-    <line x1="10" y1="${h-60}" x2="${w-10}" y2="${h-60}" stroke="#c4e538" stroke-width="1" stroke-dasharray="3,3"/>
-  `;
-  // plot dots (using ballX/ballY normalized 0-1 as a very rough approximation)
-  const shotDots = events.filter(e => e.ballX != null && e.ballY != null);
-  if (courtCorners.length === 4) {
-    // simple bilinear mapping
-    shotDots.forEach(e => {
-      const p = mapToCourt(e.ballX, e.ballY, courtCorners, w-20, h-20);
-      content += `<circle cx="${10 + p.x}" cy="${10 + p.y}" r="4" fill="#ffe14d" opacity="0.7"/>`;
-    });
-  } else {
-    // fallback: use raw ballX/ballY as horizontal position only
-    shotDots.forEach(e => {
-      const cx = 10 + e.ballX * (w - 20);
-      const cy = 10 + e.ballY * (h - 20);
-      content += `<circle cx="${cx}" cy="${cy}" r="4" fill="#ffe14d" opacity="0.6"/>`;
-    });
-  }
-  svg.innerHTML = content;
-}
-
-function mapToCourt(u, v, corners, W, H) {
-  // treat the 4 corners as: 0=near-left, 1=near-right, 2=far-right, 3=far-left
-  // bilinear interpolation to solve for (s,t) where s=horizontal, t=depth
-  // simple projective approximation: find (s,t) such that
-  //   P(s,t) = (1-t)((1-s)*C0 + s*C1) + t*((1-s)*C3 + s*C2)
-  // rather than iterating, do a simple estimate:
-  // horizontal fraction from left edge (interp of top and bottom baselines)
-  // vertical fraction from near to far baseline
-  // this is imperfect but useable for a rough heatmap
-  const nearLeft = corners[0], nearRight = corners[1], farRight = corners[2], farLeft = corners[3];
-  // vertical position: distance from near baseline vs. far baseline
-  const nearMidY = (nearLeft.y + nearRight.y) / 2;
-  const farMidY = (farLeft.y + farRight.y) / 2;
-  const t = Math.max(0, Math.min(1, (v - nearMidY) / (farMidY - nearMidY || 1)));
-  // horizontal
-  const leftX = nearLeft.x + t * (farLeft.x - nearLeft.x);
-  const rightX = nearRight.x + t * (farRight.x - nearRight.x);
-  const s = Math.max(0, Math.min(1, (u - leftX) / (rightX - leftX || 1)));
-  return { x: s * W, y: t * H };
-}
-
-// ---------- Comparison (Dashboard) ----------
-async function loadComparisonOptions() {
-  if (!currentUser) return;
-  const { data } = await supabase.from('sessions').select('id, created_at, shot_count, avg_speed, top_speed, main_shot, events')
-    .eq('user_id', currentUser.id).order('created_at', { ascending: false });
-  window._compareSessions = data || [];
-  const options = (data || []).map((s, i) => `<option value="${s.id}">Session ${i+1} — ${new Date(s.created_at).toLocaleDateString()} (${s.shot_count} shots)</option>`).join('');
-  const selA = document.getElementById('compareA');
-  const selB = document.getElementById('compareB');
-  if (selA) selA.innerHTML = '<option value="">Select session A...</option>' + options;
-  if (selB) selB.innerHTML = '<option value="">Select session B...</option>' + options;
-}
-
-function renderComparison() {
-  const idA = document.getElementById('compareA').value;
-  const idB = document.getElementById('compareB').value;
-  const box = document.getElementById('compareResult');
-  if (!idA || !idB) { box.innerHTML = '<p style="color:var(--muted);">Pick two sessions to compare.</p>'; return; }
-  const A = window._compareSessions.find(s => s.id === idA);
-  const B = window._compareSessions.find(s => s.id === idB);
-  if (!A || !B) { box.innerHTML = 'Data not found.'; return; }
-
-  const statCol = (label, aVal, bVal, unit='') => {
-    const better = aVal > bVal ? 'A' : (bVal > aVal ? 'B' : '=');
-    return `
-      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; align-items:center; background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:6px;">
-        <span style="color:var(--muted); font-size:0.82rem;">${label}</span>
-        <span style="color:${better==='A'?'var(--lime)':'var(--text)'}; font-weight:${better==='A'?700:400};">${aVal}${unit}</span>
-        <span style="color:${better==='B'?'var(--lime)':'var(--text)'}; font-weight:${better==='B'?700:400}; text-align:right;">${bVal}${unit}</span>
-      </div>`;
-  };
-  box.innerHTML = `
-    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px; color:var(--muted); font-size:0.82rem;">
-      <span></span><span>Session A</span><span style="text-align:right;">Session B</span>
-    </div>
-    ${statCol('Shot count', A.shot_count, B.shot_count)}
-    ${statCol('Avg speed', A.avg_speed, B.avg_speed, ' mph')}
-    ${statCol('Top speed', A.top_speed, B.top_speed, ' mph')}
-    <div style="background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:6px;">
-      <div style="color:var(--muted); font-size:0.82rem; margin-bottom:4px;">Most-used shot</div>
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-        <span>${A.main_shot}</span><span style="text-align:right;">${B.main_shot}</span>
-      </div>
-    </div>
-  `;
-}
-
-// ---------- Slow-mo scrub controls ----------
-function setPlaybackSpeed(rate) {
-  video.playbackRate = rate;
-  document.querySelectorAll('.speed-btn').forEach(b => b.style.background = b.dataset.rate == rate ? 'var(--lime)' : 'transparent');
-  document.querySelectorAll('.speed-btn').forEach(b => b.style.color = b.dataset.rate == rate ? '#15260f' : 'var(--text)');
-}
-function stepFrame(direction) {
-  const frameTime = 1/30;
-  video.pause();
-  video.currentTime = Math.max(0, video.currentTime + direction * frameTime);
-}
-
-// ---------- Comments and Follows on community ----------
-async function toggleFollow(targetUserId, btn) {
-  if (!currentUser) { alert('Sign in to follow players.'); return; }
-  const { data: existing } = await supabase.from('follows').select().eq('follower_id', currentUser.id).eq('following_id', targetUserId).maybeSingle();
-  if (existing) {
-    await supabase.from('follows').delete().eq('follower_id', currentUser.id).eq('following_id', targetUserId);
-    btn.textContent = 'Follow';
-  } else {
-    await supabase.from('follows').insert({ follower_id: currentUser.id, following_id: targetUserId });
-    btn.textContent = 'Following';
-  }
-}
-
-async function addComment(sessionId, inputEl, listEl) {
-  if (!currentUser) { alert('Sign in to comment.'); return; }
-  const content = inputEl.value.trim();
-  if (!content) return;
-  const username = userProfile ? userProfile.username : currentUser.email.split('@')[0];
-  await supabase.from('comments').insert({ session_id: sessionId, user_id: currentUser.id, username, content });
-  inputEl.value = '';
-  loadCommentsFor(sessionId, listEl);
-}
-
-async function loadCommentsFor(sessionId, listEl) {
-  const { data } = await supabase.from('comments').select('*').eq('session_id', sessionId).order('created_at');
-  if (!data || data.length === 0) { listEl.innerHTML = '<div style="color:var(--muted); font-size:0.78rem;">No comments yet.</div>'; return; }
-  listEl.innerHTML = data.map(c => `
-    <div style="background:#0d1b0f; padding:8px 10px; border-radius:6px; margin-bottom:4px; font-size:0.82rem;">
-      <strong style="color:var(--lime);">${escapeHtml(c.username || 'anon')}</strong>: ${escapeHtml(c.content)}
-    </div>`).join('');
-}
-
-const fileInput = document.getElementById('fileInput');
-const uploadZone = document.getElementById('uploadZone');
-const reviewCard = document.getElementById('reviewCard');
-const video = document.getElementById('video');
-const overlay = document.getElementById('overlay');
-const ctx = overlay.getContext('2d');
-const ballCanvas = document.getElementById('ballCanvas');
-const ballCtx = ballCanvas.getContext('2d');
-const popup = document.getElementById('popup');
-const analyzeBtn = document.getElementById('analyzeBtn');
-const resetBtn = document.getElementById('resetBtn');
-const popupToggle = document.getElementById('popupToggle');
-const skeletonToggle = document.getElementById('skeletonToggle');
-const statsGrid = document.getElementById('statsGrid');
-const feedbackList = document.getElementById('feedbackList');
-const analysisStatus = document.getElementById('analysisStatus');
-const calibBanner = document.getElementById('calibBanner');
-const refLineSelect = document.getElementById('refLine');
-const customDistWrap = document.getElementById('customDistWrap');
-const customDist = document.getElementById('customDist');
-const pointCountEl = document.getElementById('pointCount');
-const resetCalibBtn = document.getElementById('resetCalib');
-const skipCalibBtn = document.getElementById('skipCalib');
-const videoWrap = document.getElementById('videoWrap');
-
-let calibPoints = []; // [{x,y}, {x,y}] in canvas-pixel space
-let pxPerFoot = null; // calibration scale, null = not calibrated
-let calibSkipped = false;
-let calibDots = [];
-
-refLineSelect.addEventListener('change', () => {
-  customDistWrap.style.display = refLineSelect.value === 'custom' ? 'inline' : 'none';
-});
-
-function getRefFeet() {
-  if (refLineSelect.value === 'custom') return parseFloat(customDist.value) || null;
-  return parseFloat(refLineSelect.value);
-}
-
-resetCalibBtn.addEventListener('click', () => {
-  calibPoints = [];
-  pxPerFoot = null;
-  calibSkipped = false;
-  pointCountEl.textContent = '0';
-  calibDots.forEach(d => d.remove());
-  calibDots = [];
-});
-
-skipCalibBtn.addEventListener('click', () => {
-  calibSkipped = true;
-  pxPerFoot = null;
-  analysisStatus.textContent = 'Calibration skipped — speeds will be rough relative estimates only.';
-});
-
-overlay.addEventListener('click', (e) => {
-  if (calibPoints.length >= 2) return;
-  const rect = overlay.getBoundingClientRect();
-  const scaleX = overlay.width / rect.width;
-  const scaleY = overlay.height / rect.height;
-  const x = (e.clientX - rect.left) * scaleX;
-  const y = (e.clientY - rect.top) * scaleY;
-  calibPoints.push({ x, y });
-  pointCountEl.textContent = calibPoints.length;
-
-  const dot = document.createElement('div');
-  dot.className = 'calib-dot';
-  dot.style.left = ((e.clientX - rect.left)) + 'px';
-  dot.style.top = ((e.clientY - rect.top)) + 'px';
-  videoWrap.appendChild(dot);
-  calibDots.push(dot);
-
-  if (calibPoints.length === 2) {
-    const feet = getRefFeet();
-    if (!feet) {
-      analysisStatus.textContent = 'Enter a valid distance for your custom reference line.';
-      return;
-    }
-    const dx = calibPoints[1].x - calibPoints[0].x;
-    const dy = calibPoints[1].y - calibPoints[0].y;
-    const pxDist = Math.sqrt(dx*dx + dy*dy);
-    pxPerFoot = pxDist / feet;
-    calibSkipped = false;
-    analysisStatus.textContent = `Calibrated: ${pxPerFoot.toFixed(1)} px/ft. Ready to analyze.`;
-  }
-});
-
-let poseLandmarker = null;
-let drawingUtils = null;
-let events = []; // {time, type, speedEst, note}
-let analyzing = false;
-let rafId = null;
-
-uploadZone.addEventListener('click', () => fileInput.click());
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadZone.classList.remove('dragover');
-  if (e.dataTransfer.files.length) loadVideo(e.dataTransfer.files[0]);
-});
-fileInput.addEventListener('change', () => {
-  if (fileInput.files.length) loadVideo(fileInput.files[0]);
-});
-
-function loadVideo(file) {
-  const url = URL.createObjectURL(file);
-  video.src = url;
-  reviewCard.style.display = 'block';
-  statsGrid.style.display = 'none';
-  feedbackList.innerHTML = '';
-  events = [];
-  analysisStatus.textContent = '';
-  calibPoints = [];
-  pxPerFoot = null;
-  calibSkipped = false;
-  pointCountEl.textContent = '0';
-  calibDots.forEach(d => d.remove());
-  calibDots = [];
-  document.getElementById('publishBox').style.display = 'none';
-  document.getElementById('publishToggle').checked = false;
-  document.getElementById('publishCaption').value = '';
-  document.getElementById('publishCaption').style.display = 'none';
-  document.getElementById('publishStatus').textContent = '';
-  lastSavedSessionId = null;
-  video.onloadedmetadata = () => {
-    overlay.width = video.videoWidth;
-    overlay.height = video.videoHeight;
-    ballCanvas.width = video.videoWidth;
-    ballCanvas.height = video.videoHeight;
-  };
-  reviewCard.scrollIntoView({ behavior: 'smooth' });
-}
-
-resetBtn.addEventListener('click', () => {
-  reviewCard.style.display = 'none';
-  fileInput.value = '';
-  video.pause();
-  video.src = '';
-});
-
-async function ensurePoseModel() {
-  if (poseLandmarker) return;
-  analysisStatus.textContent = 'Loading pose model (first time only)...';
-  const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
-  );
-  const multiOn = document.getElementById('multiPlayerToggle').checked;
-  poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
-    baseOptions: {
-      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
-      delegate: "GPU"
-    },
-    runningMode: "VIDEO",
-    numPoses: multiOn ? 2 : 1
-  });
-  drawingUtils = new DrawingUtils(ctx);
-  analysisStatus.textContent = 'Model loaded. Analyzing...';
-}
-
-// ---------- Ball tracking (color + motion based) ----------
-const hiddenSample = document.createElement('canvas');
-const hiddenCtx = hiddenSample.getContext('2d', { willReadFrequently: true });
-let ballHistory = []; // {time, x, y}
-
-function detectBall(videoEl) {
-  const w = Math.min(320, videoEl.videoWidth); // downscale for speed
-  const h = Math.round(w * (videoEl.videoHeight / videoEl.videoWidth));
-  hiddenSample.width = w;
-  hiddenSample.height = h;
-  hiddenCtx.drawImage(videoEl, 0, 0, w, h);
-  const frame = hiddenCtx.getImageData(0, 0, w, h).data;
-
-  let sumX = 0, sumY = 0, count = 0;
-
-  for (let py = 0; py < h; py++) {
-    for (let px = 0; px < w; px++) {
-      const idx = (py * w + px) * 4;
-      const r = frame[idx], g = frame[idx+1], b = frame[idx+2];
-      // tennis ball yellow-green: high R+G, lower B, G slightly dominant
-      if (g > 130 && r > 110 && b < 130 && (g - b) > 30 && (r - b) > 0) {
-        sumX += px; sumY += py; count++;
-      }
-    }
-  }
-
-  if (count < 3 || count > (w*h*0.15)) {
-    // too few pixels (no ball) or too many (bad lighting/whole court matching) -> reject
-    return null;
-  }
-
-  // scale centroid back to full video resolution
-  const scaleX = videoEl.videoWidth / w;
-  const scaleY = videoEl.videoHeight / h;
-  return { x: (sumX / count) * scaleX, y: (sumY / count) * scaleY };
-}
-
-function pxToMph(pxPerSec) {
-  if (pxPerFoot) {
-    const ftPerSec = pxPerSec / pxPerFoot;
-    return ftPerSec * 0.681818; // ft/s to mph
-  }
-  // fallback rough relative estimate if not calibrated
-  return Math.min(95, (pxPerSec / overlay.width) * 60);
-}
-
-
-analyzeBtn.addEventListener('click', async () => {
-  if (!video.src) return;
-  if (!calibSkipped && !pxPerFoot) {
-    analysisStatus.textContent = 'Tip: calibrate above for real mph, or click "Skip" to use rough estimates.';
-  }
-  analyzeBtn.disabled = true;
-  analyzing = true;
-  events = [];
-  ballHistory = [];
-  feedbackList.innerHTML = '';
-  await ensurePoseModel();
-
-  video.currentTime = 0;
-  video.muted = true;
-  await video.play();
-
-  let lastWristX = null, lastWristY = null;
-  let lastLWristX = null, lastLWristY = null;
-  let lastTime = 0;
-  let cooldown = 0;
-  let speeds = [];
-  let shotCounts = {};
-  let lastBall = null;
-  let lastBallTime = 0;
-  let motionSamples = []; // {time, motion}
-
-  function loop() {
-    if (video.paused || video.ended) {
-      finishAnalysis(speeds, shotCounts, motionSamples);
-      return;
-    }
-    const ts = performance.now();
-    const result = poseLandmarker.detectForVideo(video, ts);
-
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
-    ballCtx.clearRect(0, 0, ballCanvas.width, ballCanvas.height);
-
-    // --- ball detection every frame ---
-    const ball = detectBall(video);
-    let currentBallSpeedMph = null;
-    if (ball) {
-      ballHistory.push({ time: video.currentTime, x: ball.x, y: ball.y });
-      if (ballHistory.length > 12) ballHistory.shift();
-
-      ballCtx.fillStyle = '#ffe14d';
-      ballCtx.beginPath();
-      ballCtx.arc(ball.x, ball.y, 7, 0, Math.PI*2);
-      ballCtx.fill();
-      ballCtx.strokeStyle = 'rgba(255,225,77,0.5)';
-      ballCtx.lineWidth = 2;
-      ballCtx.beginPath();
-      ballHistory.forEach((p, i) => i === 0 ? ballCtx.moveTo(p.x, p.y) : ballCtx.lineTo(p.x, p.y));
-      ballCtx.stroke();
-
-      if (lastBall) {
-        const dt = video.currentTime - lastBallTime;
-        if (dt > 0) {
-          const dx = ball.x - lastBall.x;
-          const dy = ball.y - lastBall.y;
-          const pxPerSec = Math.sqrt(dx*dx + dy*dy) / dt;
-          currentBallSpeedMph = pxToMph(pxPerSec);
-        }
-      }
-      lastBall = ball;
-      lastBallTime = video.currentTime;
-    }
-
-    if (result.landmarks && result.landmarks.length > 0) {
-      // If multi-player mode: pick the pose on the user's chosen side of the court
-      let lm = result.landmarks[0];
-      const multiOn = document.getElementById('multiPlayerToggle').checked;
-      if (multiOn && result.landmarks.length > 1) {
-        const mySide = document.getElementById('mySide').value; // 'near' = bottom, 'far' = top
-        // hip Y position: larger Y = lower on screen = closer/near
-        const hipY = arr => (arr[23].y + arr[24].y) / 2;
-        const sorted = [...result.landmarks].sort((a,b) => hipY(b) - hipY(a));
-        lm = mySide === 'near' ? sorted[0] : sorted[sorted.length - 1];
-        // draw the other player faded so the user sees it's detected but ignored
-        if (skeletonToggle.checked) {
-          const others = result.landmarks.filter(l => l !== lm);
-          others.forEach(o => {
-            drawingUtils.drawLandmarks(o, { radius: 2, color: 'rgba(155,176,159,0.4)' });
-            drawingUtils.drawConnectors(o, PoseLandmarker.POSE_CONNECTIONS, { color: 'rgba(155,176,159,0.4)', lineWidth: 1 });
-          });
-        }
-      }
-
-      if (skeletonToggle.checked) {
-        drawingUtils.drawLandmarks(lm, { radius: 3, color: '#c4e538' });
-        drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#c4e538', lineWidth: 2 });
-      }
-
-      // track both wrists, swing detection uses whichever hand is moving faster (auto-detects dominant hand)
-      const rWrist = lm[16], lWrist = lm[15];
-      const rx = rWrist.x * overlay.width, ry = rWrist.y * overlay.height;
-      const lx = lWrist.x * overlay.width, ly = lWrist.y * overlay.height;
-      const dt = video.currentTime - lastTime;
-
-      if (lastWristY !== null && dt > 0 && cooldown <= 0) {
-        const rdx = rx - lastWristX, rdy = ry - lastWristY;
-        const ldx = lx - lastLWristX, ldy = ly - lastLWristY;
-        const rSpeed = Math.sqrt(rdx*rdx + rdy*rdy) / dt;
-        const lSpeed = Math.sqrt(ldx*ldx + ldy*ldy) / dt;
-
-        // sample motion (combined wrist speed) roughly 4x/sec
-        motionSamples.push({ time: video.currentTime, motion: rSpeed + lSpeed });
-
-        const useRight = rSpeed >= lSpeed;
-        const wristPxPerSec = useRight ? rSpeed : lSpeed;
-        const dx = useRight ? rdx : ldx;
-        const dy = useRight ? rdy : ldy;
-        const racketWrist = useRight ? rWrist : lWrist;
-        const racketElbow = useRight ? lm[14] : lm[13];
-        const racketShoulder = useRight ? lm[12] : lm[11];
-        const offShoulder = useRight ? lm[11] : lm[12];
-        const hip = useRight ? lm[24] : lm[23];
-        const offHip = useRight ? lm[23] : lm[24];
-        const frontKnee = useRight ? lm[26] : lm[25];
-        const frontAnkle = useRight ? lm[28] : lm[27];
-        const nose = lm[0];
-
-        if (wristPxPerSec > overlay.width * 1.2) {
-          cooldown = 0.6;
-
-          const shotType = classifyShot(racketWrist, racketShoulder, hip, dx, dy);
-          shotCounts[shotType] = (shotCounts[shotType] || 0) + 1;
-
-          const speedMph = currentBallSpeedMph !== null
-            ? currentBallSpeedMph
-            : pxToMph(wristPxPerSec);
-          speeds.push(speedMph);
-
-          // ---- Spin estimation ----
-          // Compare wrist path angle vs ball trajectory angle right after contact.
-          // Racket brushing up on ball → topspin (ball angle > wrist path angle)
-          // Racket cutting down → slice
-          // Similar angles → flat
-          let spinLabel = '—';
-          if (ballHistory.length >= 3) {
-            const b1 = ballHistory[ballHistory.length - 3];
-            const b2 = ballHistory[ballHistory.length - 1];
-            const ballAngle = Math.atan2(-(b2.y - b1.y), b2.x - b1.x) * 180 / Math.PI;
-            const wristAngle = Math.atan2(-dy, dx) * 180 / Math.PI;
-            const diff = ballAngle - wristAngle;
-            // For non-serve shots
-            if (shotType !== 'Serve / Overhead') {
-              if (diff > 12) spinLabel = 'topspin';
-              else if (diff < -12) spinLabel = 'slice';
-              else spinLabel = 'flat';
-            }
-          }
-
-          const note = generateFeedback(shotType, {
-            wrist: racketWrist, elbow: racketElbow, shoulder: racketShoulder,
-            offShoulder, hip, offHip, frontKnee, frontAnkle, nose
-          });
-          const sourceTag = currentBallSpeedMph !== null ? '' : ' (ball not detected — estimate)';
-          events.push({
-            time: video.currentTime,
-            type: shotType,
-            speedEst: Math.round(speedMph),
-            spin: spinLabel,
-            note: note + sourceTag,
-            ballX: lastBall ? lastBall.x / overlay.width : null,
-            ballY: lastBall ? lastBall.y / overlay.height : null
-          });
-        }
-      }
-
-      lastWristX = rx; lastWristY = ry;
-      lastLWristX = lx; lastLWristY = ly;
-      lastTime = video.currentTime;
-    }
-
-    if (cooldown > 0) cooldown -= 1/30;
-
-    if (popupToggle.checked) {
-      const active = events.find(e => Math.abs(e.time - video.currentTime) < 0.15);
-      if (active) {
-        popup.style.display = 'block';
-        popup.style.left = '12px';
-        popup.style.top = '12px';
-        popup.textContent = `${active.type} • ~${active.speedEst} mph — ${active.note}`;
-      } else {
-        popup.style.display = 'none';
-      }
-    } else {
-      popup.style.display = 'none';
-    }
-
-    rafId = requestAnimationFrame(loop);
-  }
-
-  rafId = requestAnimationFrame(loop);
-});
-
-function angleAt(a, b, c) {
-  // returns angle in degrees at point b, formed by points a-b-c
-  const ab = { x: a.x - b.x, y: a.y - b.y };
-  const cb = { x: c.x - b.x, y: c.y - b.y };
-  const dot = ab.x * cb.x + ab.y * cb.y;
-  const magAB = Math.sqrt(ab.x*ab.x + ab.y*ab.y);
-  const magCB = Math.sqrt(cb.x*cb.x + cb.y*cb.y);
-  if (magAB === 0 || magCB === 0) return 0;
-  const cos = Math.max(-1, Math.min(1, dot / (magAB * magCB)));
-  return Math.acos(cos) * (180 / Math.PI);
-}
-
-function classifyShot(wrist, shoulder, hip, dx, dy) {
-  const aboveShoulder = wrist.y < shoulder.y;
-  const movingUp = dy < 0;
-  if (aboveShoulder && movingUp) return 'Serve / Overhead';
-  const handedness = (userProfile && userProfile.handedness) || 'right';
-  // for right-handers: forehand goes across body left-to-right (dx > 0)
-  // for left-handers: mirror
-  const forehandDx = handedness === 'left' ? dx < 0 : dx > 0;
-  const backhandDx = handedness === 'left' ? dx > 0 : dx < 0;
-  if (forehandDx && Math.abs(wrist.x - hip.x) > 0.05) return 'Forehand';
-  if (backhandDx) return 'Backhand';
-  return 'Volley';
-}
-
-function generateFeedback(type, lm) {
-  const { wrist, elbow, shoulder, offShoulder, hip, offHip, frontKnee, frontAnkle, nose } = lm;
-  const issues = [];
-  const positives = [];
-
-  // 1. Contact point: how far in front of the hip the racket wrist is (forward = good, except serve)
-  const contactForward = Math.abs(wrist.x - hip.x);
-
-  // 2. Elbow extension at contact (straighter arm generally = more reach/power, very bent = cramped)
-  const elbowAngle = angleAt(shoulder, elbow, wrist);
-
-  // 3. Shoulder rotation: how open the shoulder line is relative to the hip line
-  const shoulderTilt = Math.abs(shoulder.y - offShoulder.y);
-  const hipTilt = Math.abs(hip.y - offHip.y);
-  const rotationGap = Math.abs(shoulderTilt - hipTilt);
-
-  // 4. Front knee bend: angle at the knee (closer to 180 = straight leg, lower = bent/loaded)
-  const kneeAngle = angleAt(hip, frontKnee, frontAnkle);
-
-  // 5. Balance: head (nose) position relative to the midpoint between hips — leaning far off-center suggests poor balance
-  const hipMidX = (hip.x + offHip.x) / 2;
-  const headOffset = Math.abs(nose.x - hipMidX);
-
-  if (type === 'Serve / Overhead') {
-    const contactHeight = hip.y - wrist.y;
-    if (contactHeight > 0.32) positives.push('good extension on contact');
-    else issues.push('try contacting the ball higher, at full reach, rather than dropping the racket arm early');
-
-    if (elbowAngle < 140) issues.push('arm looks bent at contact — focus on fully extending up through the ball');
-
-    if (kneeAngle > 165) issues.push('legs look fairly straight at contact — driving up more from the knees can add power');
-  }
-  else if (type === 'Forehand') {
-    if (contactForward > 0.15) positives.push('solid contact point out in front of the body');
-    else issues.push('contact looks late/close to the body — try meeting the ball further out in front');
-
-    if (rotationGap < 0.02) issues.push('shoulders look fairly square to the net — more hip/shoulder rotation on the backswing can add power');
-
-    if (elbowAngle < 100) issues.push('arm looks quite cramped through contact — give the swing a bit more room to extend');
-
-    if (headOffset > 0.12) issues.push('head/upper body drifting off-balance through the shot — try staying more centered over your base');
-  }
-  else if (type === 'Backhand') {
-    if (contactForward > 0.12) positives.push('good contact point ahead of the body');
-    else issues.push('contact point looks a little late — try preparing the racket earlier');
-
-    if (kneeAngle > 170) issues.push('front leg looks quite straight — a little more knee bend can help with balance and power');
-
-    issues.push('check that your follow-through finishes high and extended, not cut short');
-  }
-  else { // Volley
-    if (elbowAngle < 130) positives.push('compact, controlled swing — good for a volley');
-    else issues.push('swing looks a bit long for a volley — try a shorter, punchier motion');
-
-    if (headOffset > 0.1) issues.push('try keeping your head/balance steadier through contact');
-  }
-
-  if (positives.length === 0 && issues.length === 0) {
-    return 'shot looks mechanically solid';
-  }
-  const combined = [...positives.slice(0,1), ...issues.slice(0,2)];
-  return combined.join('; ');
-}
-
-function finishAnalysis(speeds, shotCounts, motionSamples) {
-  cancelAnimationFrame(rafId);
-  analyzing = false;
-  analyzeBtn.disabled = false;
-  popup.style.display = 'none';
-
-  // ---- Rally segmentation ----
-  const rallies = segmentRallies(motionSamples || [], events);
-  window._lastRallies = rallies;
-
-  analysisStatus.textContent = `Analysis complete — ${events.length} shots detected in ${rallies.length} ${rallies.length === 1 ? 'rally' : 'rallies'}.`;
-
-  statsGrid.style.display = 'grid';
-  document.getElementById('statShots').textContent = events.length;
-  document.getElementById('statAvgSpeed').textContent = speeds.length ? Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length) : 0;
-  document.getElementById('statTopSpeed').textContent = speeds.length ? Math.round(Math.max(...speeds)) : 0;
-  const mainShot = Object.entries(shotCounts).sort((a,b)=>b[1]-a[1])[0];
-  document.getElementById('statMain').textContent = mainShot ? mainShot[0] : '-';
-
-  if (currentUser) {
-    document.getElementById('publishBox').style.display = 'block';
-  }
-
-  // Build report card by shot type: avg speed grade + consistency score
-  const byShot = {};
-  events.forEach(e => {
-    if (!byShot[e.type]) byShot[e.type] = { speeds: [], count: 0 };
-    byShot[e.type].speeds.push(e.speedEst);
-    byShot[e.type].count++;
-  });
-  const reportRows = Object.entries(byShot).map(([shot, d]) => {
-    const avg = Math.round(d.speeds.reduce((a,b)=>a+b,0) / d.speeds.length);
-    const grade = gradeSpeed(shot, avg);
-    const consistency = calcConsistency(d.speeds);
-    return `<div style="display:grid; grid-template-columns: 1fr auto auto auto; gap:10px; align-items:center; background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:6px;">
-      <span>${shot}</span>
-      <span style="color:var(--muted); font-size:0.82rem;">${d.count} shots</span>
-      <span style="color:var(--muted); font-size:0.82rem;">${consistency !== null ? consistency + '% consistent' : '—'}</span>
-      <span style="background:var(--lime); color:#15260f; font-weight:700; padding:4px 10px; border-radius:6px;">${grade} <span style="font-weight:400; font-size:0.78rem;">(${avg} mph avg)</span></span>
-    </div>`;
-  }).join('');
-
-  // Personal best check
-  checkPersonalBests(events);
-
-  const reportCardEl = document.getElementById('reportCard');
-  if (reportCardEl) reportCardEl.innerHTML = reportRows;
-
-  saveSessionToSupabase({
-    shotCount: events.length,
-    avgSpeed: speeds.length ? Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length) : 0,
-    topSpeed: speeds.length ? Math.round(Math.max(...speeds)) : 0,
-    mainShot: mainShot ? mainShot[0] : '-',
-    events: events
-  });
-
-  feedbackList.innerHTML = '';
-  events.forEach(e => {
-    const li = document.createElement('li');
-    const m = Math.floor(e.time / 60);
-    const s = Math.floor(e.time % 60).toString().padStart(2, '0');
-    const spinTag = (e.spin && e.spin !== '—') ? ` <span style="color:var(--muted); font-size:0.78rem;">[${e.spin}]</span>` : '';
-    li.innerHTML = `<span class="time">${m}:${s}</span><strong>${e.type}</strong>${spinTag} — ~${e.speedEst} mph — ${e.note}`;
-    li.querySelector('.time').addEventListener('click', () => {
-      video.currentTime = e.time;
-      video.pause();
-    });
-    feedbackList.appendChild(li);
-  });
-
-  // Rally list
-  const ralliesWrap = document.getElementById('ralliesWrap');
-  const ralliesList = document.getElementById('ralliesList');
-  const displayRallies = window._lastRallies || [];
-  if (displayRallies.length > 0) {
-    ralliesWrap.style.display = 'block';
-    ralliesList.innerHTML = displayRallies.map((r, i) => {
-      const dur = Math.round(r.end - r.start);
-      return `<div style="background:#101d12; padding:8px 12px; border-radius:8px; margin-bottom:6px; display:flex; justify-content:space-between; cursor:pointer;" data-jump="${r.start}">
-        <span><strong>Rally ${i+1}</strong> — ${r.shots.length} shots, ${dur}s</span>
-        <span style="color:var(--muted); font-size:0.78rem;">▶ jump</span>
-      </div>`;
-    }).join('');
-    ralliesList.querySelectorAll('[data-jump]').forEach(el => {
-      el.addEventListener('click', () => {
-        video.currentTime = parseFloat(el.dataset.jump);
-        video.pause();
-      });
-    });
-  } else {
-    ralliesWrap.style.display = 'none';
-  }
-
-  // Heatmap
-  const heatmapWrap = document.getElementById('heatmapWrap');
-  const hasBallPositions = events.some(e => e.ballX != null);
-  if (hasBallPositions) {
-    heatmapWrap.style.display = 'block';
-    renderCourtHeatmap();
-  } else {
-    heatmapWrap.style.display = 'none';
-  }
-}
-
-// ---------- Camera recording ----------
-let mediaStream = null;
-let mediaRecorder = null;
-let recordChunks = [];
-let recordFacing = 'environment'; // rear camera default
-
-const recordZone = document.getElementById('recordZone');
-const recordCard = document.getElementById('recordCard');
-const recordPreview = document.getElementById('recordPreview');
-const startRecordBtn = document.getElementById('startRecordBtn');
-const stopRecordBtn = document.getElementById('stopRecordBtn');
-const switchCameraBtn = document.getElementById('switchCameraBtn');
-const cancelRecordBtn = document.getElementById('cancelRecordBtn');
-const recordStatus = document.getElementById('recordStatus');
-
-async function openCamera() {
-  try {
-    if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: recordFacing, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false
-    });
-    recordPreview.srcObject = mediaStream;
-    recordCard.style.display = 'block';
-    recordCard.scrollIntoView({ behavior: 'smooth' });
-  } catch (err) {
-    alert('Camera access denied or unavailable: ' + err.message);
-  }
-}
-
-recordZone.addEventListener('click', openCamera);
-
-switchCameraBtn.addEventListener('click', async () => {
-  recordFacing = recordFacing === 'environment' ? 'user' : 'environment';
-  await openCamera();
-});
-
-startRecordBtn.addEventListener('click', () => {
-  if (!mediaStream) return;
-  recordChunks = [];
-  // pick a compatible mime type
-  const mimeCandidates = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
-  const mimeType = mimeCandidates.find(m => MediaRecorder.isTypeSupported(m)) || '';
-  mediaRecorder = new MediaRecorder(mediaStream, mimeType ? { mimeType } : undefined);
-  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
-  mediaRecorder.onstop = () => {
-    const blob = new Blob(recordChunks, { type: mediaRecorder.mimeType || 'video/webm' });
-    const file = new File([blob], `recording-${Date.now()}.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`, { type: blob.type });
-    // hand off to the same loader used for uploads
-    loadVideo(file);
-    if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
-    mediaStream = null;
-    recordCard.style.display = 'none';
-    recordStatus.textContent = '';
-  };
-  mediaRecorder.start();
-  startRecordBtn.style.display = 'none';
-  stopRecordBtn.style.display = 'inline-block';
-  recordStatus.textContent = '● Recording...';
-});
-
-stopRecordBtn.addEventListener('click', () => {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-  startRecordBtn.style.display = 'inline-block';
-  stopRecordBtn.style.display = 'none';
-});
-
-cancelRecordBtn.addEventListener('click', () => {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-  if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
-  mediaStream = null;
-  recordCard.style.display = 'none';
-  recordChunks = [];
-  startRecordBtn.style.display = 'inline-block';
-  stopRecordBtn.style.display = 'none';
-});
-
-// ---------- Multi-player mode toggle wiring ----------
-const multiPlayerToggle = document.getElementById('multiPlayerToggle');
-const mySideWrap = document.getElementById('mySideWrap');
-multiPlayerToggle.addEventListener('change', async () => {
-  mySideWrap.style.display = multiPlayerToggle.checked ? 'inline-flex' : 'none';
-  // rebuild pose model with numPoses = 2 or 1
-  if (poseLandmarker) {
-    await poseLandmarker.close();
-    poseLandmarker = null;
-  }
-});
-</script>
+<footer>
+  AI Tennis Coach — 100% free, runs in your browser, no data leaves your device except session summaries you choose to save.
+</footer>
 
 </body>
 </html>
