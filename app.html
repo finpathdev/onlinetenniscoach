@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tennis Coach">
-<link rel="apple-touch-icon" href="tennis-icon-180.png">
+<link rel="apple-touch-icon" href="logo-180.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%230d1b0f'/%3E%3Ccircle cx='50' cy='50' r='38' fill='%23c4e538'/%3E%3Cpath d='M14 50 C 30 25, 70 25, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3Cpath d='M14 50 C 30 75, 70 75, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3C/svg%3E">
 <style>
   :root {
@@ -451,18 +451,19 @@
       <div id="matchDetails" style="display:none; margin-top:10px;">
         <input type="text" id="matchOpponent" placeholder="Opponent name (optional)" style="width:100%; padding:8px 12px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.9rem; margin-bottom:8px;">
         <input type="text" id="matchScore" placeholder="Final score (e.g. 6-3, 6-4)" style="width:100%; padding:8px 12px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.9rem;">
+        <p style="color: var(--muted); font-size: 0.75rem; margin: 10px 0 0;">ℹ️ Match records are automatically deleted after 3 months to keep your history clean. Practice sessions are kept indefinitely.</p>
       </div>
     </div>
 
     <div class="calib-banner" id="playerIdBanner" style="display:block;">
-      <strong>👤 Which player is you?</strong>
+      <strong>👤 Tag yourself in the video</strong>
       <p style="color: var(--muted); margin: 8px 0;">
-        Tap 1-3 photos below that show you (from different moments). The app uses your clothing color to track your shots throughout the video.
-        <button class="secondary" id="extractPlayersBtn" style="padding:4px 12px; font-size:0.78rem; margin-left:6px;">Detect players</button>
+        Pause the video at a moment where you're clearly visible, then tap yourself in the frame below.
+        The app will lock onto you and track only your shots.
+        <button class="secondary" id="startTagBtn" style="padding:4px 12px; font-size:0.78rem; margin-left:6px;">Start tagging</button>
         <button class="secondary" id="skipPlayerIdBtn" style="padding:4px 12px; font-size:0.78rem;">Skip (single player)</button>
         <span id="playerIdStatus" style="margin-left:8px; font-size:0.78rem; color: var(--muted);"></span>
       </p>
-      <div id="playerCandidates" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap:8px; margin-top:10px;"></div>
     </div>
 
     <div class="calib-banner" id="calibBanner">
@@ -716,6 +717,14 @@
       <h3 style="margin-top:0;">🎖 Badges & streaks</h3>
       <div id="badgesBox" style="font-size:0.88rem;"></div>
     </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">🏸 Match history</h3>
+      <p style="color: var(--muted); font-size: 0.78rem; margin-top: 0; margin-bottom: 12px;">
+        ℹ️ Match records are kept for 3 months from the date you log them, then automatically removed. Practice sessions are kept indefinitely.
+      </p>
+      <div id="matchHistoryBox" style="font-size:0.88rem;">Loading…</div>
+    </div>
   </div>
 </div>
 
@@ -827,6 +836,7 @@ async function refreshAuthUI() {
     userEmailLabel.textContent = user.email;
     historyCard.style.display = 'block';
     if (typeof loadUserProfile === 'function') await loadUserProfile();
+    if (typeof cleanupOldMatches === 'function') cleanupOldMatches();
     loadSessions();
   } else {
     loggedOutView.style.display = 'flex';
@@ -1342,6 +1352,7 @@ async function renderProfile() {
   if (!currentUser) { loggedOut.style.display = 'block'; content.style.display = 'none'; return; }
   loggedOut.style.display = 'none'; content.style.display = 'block';
 
+  await cleanupOldMatches();
   await loadUserProfile();
   if (userProfile) {
     document.getElementById('profileUsername').value = userProfile.username || '';
@@ -1351,6 +1362,58 @@ async function renderProfile() {
   }
   renderPersonalBests();
   renderBadges();
+  renderMatchHistory();
+}
+
+// ---------- Match history + retention cleanup ----------
+async function cleanupOldMatches() {
+  if (!currentUser) return;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - 3);
+  await supabase
+    .from('sessions')
+    .delete()
+    .eq('user_id', currentUser.id)
+    .eq('session_type', 'match')
+    .lt('created_at', cutoff.toISOString());
+}
+
+async function renderMatchHistory() {
+  const box = document.getElementById('matchHistoryBox');
+  if (!currentUser) return;
+  const { data } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .eq('session_type', 'match')
+    .order('created_at', { ascending: false });
+
+  if (!data || data.length === 0) {
+    box.innerHTML = '<p style="color:var(--muted); margin:0;">No matches logged yet. When you analyze a video and mark it as a Match, it will appear here.</p>';
+    return;
+  }
+
+  box.innerHTML = data.map(s => {
+    const created = new Date(s.created_at);
+    const expiresAt = new Date(created);
+    expiresAt.setMonth(expiresAt.getMonth() + 3);
+    const daysLeft = Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24));
+    return `
+      <div style="background:#101d12; padding:12px 14px; border-radius:8px; margin-bottom:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline;">
+          <div>
+            <strong>${s.match_score || '(no score)'}</strong>
+            ${s.match_opponent ? `<span style="color:var(--muted); margin-left:6px;">vs ${escapeHtml(s.match_opponent)}</span>` : ''}
+          </div>
+          <span style="color:var(--muted); font-size:0.78rem;">${created.toLocaleDateString()}</span>
+        </div>
+        <div style="color:var(--muted); font-size:0.8rem; margin-top:4px;">
+          ${s.shot_count} shots &middot; top ${s.top_speed} mph &middot; mostly ${s.main_shot}
+          &middot; <span style="color:${daysLeft < 14 ? '#e58585' : 'var(--muted)'};">removed in ${daysLeft} day${daysLeft === 1 ? '' : 's'}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 document.addEventListener('click', async (e) => {
@@ -1887,6 +1950,11 @@ function loadVideo(file) {
   document.getElementById('publishCaption').style.display = 'none';
   document.getElementById('publishStatus').textContent = '';
   lastSavedSessionId = null;
+  playerColorSig = null;
+  lastTrackedPos = null;
+  tagMode = false;
+  if (document.getElementById('playerIdBanner')) document.getElementById('playerIdBanner').style.display = 'block';
+  if (document.getElementById('playerIdStatus')) document.getElementById('playerIdStatus').textContent = '';
   video.onloadedmetadata = () => {
     overlay.width = video.videoWidth;
     overlay.height = video.videoHeight;
@@ -2041,9 +2109,8 @@ analyzeBtn.addEventListener('click', async () => {
       let lm = result.landmarks[0];
       const multiOn = document.getElementById('multiPlayerToggle').checked;
 
-      // Preferred method: match by clothing color signature (set during player identification)
+      // Preferred method: combine color signature + position continuity (set during "tag yourself" flow)
       if (playerColorSig && result.landmarks.length > 1) {
-        // sample torso color for each detected pose in current frame
         const w = video.videoWidth, h = video.videoHeight;
         const sampleCanvas = document.createElement('canvas');
         sampleCanvas.width = w; sampleCanvas.height = h;
@@ -2051,16 +2118,32 @@ analyzeBtn.addEventListener('click', async () => {
         sctx.drawImage(video, 0, 0);
         const frameData = sctx.getImageData(0, 0, w, h);
 
-        let best = { dist: Infinity, pose: lm };
+        // Score each pose: lower = better (combines color + position)
+        let best = { score: Infinity, pose: lm };
         result.landmarks.forEach(pose => {
           const xs = pose.map(p => p.x * w);
           const ys = pose.map(p => p.y * h);
           const bbox = [Math.min(...xs), Math.min(...ys), Math.max(...xs)-Math.min(...xs), Math.max(...ys)-Math.min(...ys)];
           const sig = avgTorsoColor(frameData, bbox);
-          const dist = colorDistance(sig, playerColorSig);
-          if (dist < best.dist) best = { dist, pose };
+          const colorDist = colorDistance(sig, playerColorSig); // 0-441 range
+          const colorScore = colorDist / 4.41; // normalize to 0-100
+
+          const centerX = (pose[11].x + pose[12].x + pose[23].x + pose[24].x) / 4;
+          const centerY = (pose[11].y + pose[12].y + pose[23].y + pose[24].y) / 4;
+          let posScore = 0;
+          if (lastTrackedPos) {
+            const dx = centerX - lastTrackedPos.x;
+            const dy = centerY - lastTrackedPos.y;
+            const posDist = Math.hypot(dx, dy); // normalized 0-1.4
+            posScore = posDist * 200; // heavily weighted
+          }
+
+          const total = colorScore + posScore;
+          if (total < best.score) best = { score: total, pose, cx: centerX, cy: centerY };
         });
         lm = best.pose;
+        // update tracked position for next frame
+        if (best.cx !== undefined) lastTrackedPos = { x: best.cx, y: best.cy };
 
         if (skeletonToggle.checked) {
           const others = result.landmarks.filter(l => l !== lm);
@@ -2070,7 +2153,7 @@ analyzeBtn.addEventListener('click', async () => {
           });
         }
       }
-      // Fallback: near/far side selection if multi-player mode is on
+      // Fallback: near/far side selection if multi-player mode is on but no tag was set
       else if (multiOn && result.landmarks.length > 1) {
         const mySide = document.getElementById('mySide').value;
         const hipY = arr => (arr[23].y + arr[24].y) / 2;
@@ -2531,116 +2614,81 @@ function colorDistance(a, b) {
   return Math.sqrt(dr*dr + dg*dg + db*db);
 }
 
-async function extractPlayerCandidates() {
-  const btn = document.getElementById('extractPlayersBtn');
-  const status = document.getElementById('playerIdStatus');
-  const grid = document.getElementById('playerCandidates');
-  if (!video.src) { status.textContent = 'Load a video first.'; return; }
+let tagMode = false;
+let lastTrackedPos = null; // {x, y} in normalized coords, updated each frame during analysis
 
-  btn.disabled = true;
+async function startTagging() {
+  const status = document.getElementById('playerIdStatus');
+  if (!video.src) { status.textContent = 'Load a video first.'; return; }
+  video.pause();
   status.textContent = 'Loading pose model…';
   await ensurePoseModel();
+  tagMode = true;
+  overlay.style.cursor = 'crosshair';
+  status.innerHTML = '<span style="color:var(--lime);">Pause on a clear frame, then click yourself in the video →</span>';
+}
 
-  status.textContent = 'Scanning for players…';
-  grid.innerHTML = '';
-  candidateData = [];
+async function handleTagClick(e) {
+  if (!tagMode) return;
+  const status = document.getElementById('playerIdStatus');
+  const rect = overlay.getBoundingClientRect();
+  const clickX = ((e.clientX - rect.left) / rect.width) * video.videoWidth;
+  const clickY = ((e.clientY - rect.top) / rect.height) * video.videoHeight;
 
-  const duration = video.duration;
-  const sampleTimes = [duration*0.15, duration*0.35, duration*0.55, duration*0.75].filter(t => !isNaN(t) && t > 0);
+  status.textContent = 'Detecting player…';
 
+  // capture current frame
   const hidden = document.createElement('canvas');
   hidden.width = video.videoWidth; hidden.height = video.videoHeight;
   const hctx = hidden.getContext('2d', { willReadFrequently: true });
+  hctx.drawImage(video, 0, 0);
+  const imgData = hctx.getImageData(0, 0, hidden.width, hidden.height);
 
-  for (const t of sampleTimes) {
-    video.currentTime = t;
-    await new Promise(r => video.addEventListener('seeked', r, { once: true }));
-    await new Promise(r => setTimeout(r, 100)); // extra time for frame to render
-
-    hctx.drawImage(video, 0, 0);
-    const imgData = hctx.getImageData(0, 0, hidden.width, hidden.height);
-
-    // Detect poses in this frame
-    const result = poseLandmarker.detectForVideo(video, performance.now());
-    if (!result.landmarks || result.landmarks.length === 0) continue;
-
-    for (let pIdx = 0; pIdx < result.landmarks.length; pIdx++) {
-      const lm = result.landmarks[pIdx];
-      // compute bbox
-      const xs = lm.map(p => p.x * hidden.width);
-      const ys = lm.map(p => p.y * hidden.height);
-      const minX = Math.max(0, Math.min(...xs) - 20);
-      const maxX = Math.min(hidden.width, Math.max(...xs) + 20);
-      const minY = Math.max(0, Math.min(...ys) - 20);
-      const maxY = Math.min(hidden.height, Math.max(...ys) + 20);
-      const bbox = [minX, minY, maxX-minX, maxY-minY];
-
-      if (bbox[2] < 40 || bbox[3] < 60) continue; // too small
-
-      // crop to a thumbnail
-      const thumb = document.createElement('canvas');
-      const targetH = 120;
-      const scale = targetH / bbox[3];
-      thumb.width = bbox[2] * scale;
-      thumb.height = targetH;
-      const tctx = thumb.getContext('2d');
-      tctx.drawImage(video, bbox[0], bbox[1], bbox[2], bbox[3], 0, 0, thumb.width, thumb.height);
-
-      const colorSig = avgTorsoColor(imgData, bbox);
-      if (!colorSig) continue;
-
-      candidateData.push({
-        frameTime: t,
-        bbox,
-        dataUrl: thumb.toDataURL('image/jpeg', 0.7),
-        colorSig,
-        index: candidateData.length,
-        selected: false
-      });
-    }
-  }
-
-  if (candidateData.length === 0) {
-    status.textContent = 'No players detected. You can skip this step.';
-    btn.disabled = false;
+  const result = poseLandmarker.detectForVideo(video, performance.now());
+  if (!result.landmarks || result.landmarks.length === 0) {
+    status.textContent = 'No people detected in this frame. Scrub to a clearer frame and click again.';
     return;
   }
 
-  // render grid
-  grid.innerHTML = candidateData.map(c => `
-    <div class="player-candidate" data-idx="${c.index}" style="border:2px solid #223a26; border-radius:8px; overflow:hidden; cursor:pointer; transition:border-color 0.15s;">
-      <img src="${c.dataUrl}" style="width:100%; height:120px; object-fit:cover; display:block;">
-    </div>
-  `).join('');
-
-  grid.querySelectorAll('.player-candidate').forEach(el => {
-    el.addEventListener('click', () => {
-      const idx = parseInt(el.dataset.idx);
-      candidateData[idx].selected = !candidateData[idx].selected;
-      el.style.borderColor = candidateData[idx].selected ? 'var(--lime)' : '#223a26';
-      // recompute signature = avg of selected color sigs
-      const selected = candidateData.filter(c => c.selected);
-      if (selected.length > 0) {
-        const avg = [0,0,0];
-        selected.forEach(c => { avg[0] += c.colorSig[0]; avg[1] += c.colorSig[1]; avg[2] += c.colorSig[2]; });
-        playerColorSig = [avg[0]/selected.length, avg[1]/selected.length, avg[2]/selected.length];
-        status.innerHTML = `<span style="color:var(--lime);">${selected.length} photo${selected.length===1?'':'s'} selected</span>`;
-      } else {
-        playerColorSig = null;
-        status.textContent = '';
-      }
-    });
+  // find pose whose center is closest to click
+  let best = null;
+  result.landmarks.forEach((lm, idx) => {
+    const cx = ((lm[11].x + lm[12].x + lm[23].x + lm[24].x) / 4) * video.videoWidth;
+    const cy = ((lm[11].y + lm[12].y + lm[23].y + lm[24].y) / 4) * video.videoHeight;
+    const d = Math.hypot(cx - clickX, cy - clickY);
+    if (!best || d < best.d) best = { d, lm, idx, cx, cy };
   });
 
-  status.textContent = `Detected ${candidateData.length} people across ${sampleTimes.length} frames. Tap the ones showing you.`;
-  video.currentTime = 0;
-  btn.disabled = false;
+  // Get bbox for color signature
+  const xs = best.lm.map(p => p.x * hidden.width);
+  const ys = best.lm.map(p => p.y * hidden.height);
+  const bbox = [Math.min(...xs), Math.min(...ys), Math.max(...xs)-Math.min(...xs), Math.max(...ys)-Math.min(...ys)];
+  const sig = avgTorsoColor(imgData, bbox);
+  if (!sig) {
+    status.textContent = 'Could not read that player\'s color. Try a different frame.';
+    return;
+  }
+
+  playerColorSig = sig;
+  lastTrackedPos = { x: best.cx / video.videoWidth, y: best.cy / video.videoHeight };
+
+  // flash a highlight over the selected pose so user sees it worked
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  drawingUtils.drawLandmarks(best.lm, { radius: 5, color: '#c4e538' });
+  drawingUtils.drawConnectors(best.lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#c4e538', lineWidth: 3 });
+
+  tagMode = false;
+  overlay.style.cursor = '';
+  status.innerHTML = '<span style="color:var(--lime);">✓ Tagged! Click "Start tagging" again to retag if wrong.</span>';
 }
 
+overlay.addEventListener('click', handleTagClick);
+
 document.addEventListener('click', (e) => {
-  if (e.target.id === 'extractPlayersBtn') extractPlayerCandidates();
+  if (e.target.id === 'startTagBtn') startTagging();
   if (e.target.id === 'skipPlayerIdBtn') {
     playerColorSig = null;
+    lastTrackedPos = null;
     document.getElementById('playerIdBanner').style.display = 'none';
     document.getElementById('playerIdStatus').textContent = 'Skipped.';
   }
