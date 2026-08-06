@@ -197,6 +197,43 @@
     border-radius: 20px;
     margin-left: 8px;
   }
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(196, 229, 56, 0.25);
+    border-top-color: var(--lime);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  .spinner.dark {
+    border: 2px solid rgba(21, 38, 15, 0.3);
+    border-top-color: #15260f;
+  }
+  .spinner.large { width: 32px; height: 32px; border-width: 3px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty-state {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--muted);
+  }
+  .empty-state .emoji { font-size: 2.2rem; margin-bottom: 10px; opacity: 0.6; }
+  .empty-state .msg { font-size: 0.92rem; margin-bottom: 6px; color: var(--text); }
+  .empty-state .hint { font-size: 0.8rem; }
+  .error-toast {
+    background: rgba(180, 60, 60, 0.15);
+    border: 1px solid #d47a7a;
+    color: #f0c8c8;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
   .calib-banner {
     background: #1a2e1e;
     border: 1px solid var(--lime);
@@ -390,6 +427,7 @@
   <button class="secondary" id="navCommunity">🌍 Community</button>
   <button class="secondary" id="navLeaderboard">🏆 Leaderboard</button>
   <button class="secondary" id="navProfile">👤 Profile</button>
+  <button class="secondary" id="navAbout">ℹ️ About</button>
 </div>
 
 <main>
@@ -635,6 +673,10 @@
       <div id="drillSuggestions" style="font-size:0.88rem; line-height:1.7;"></div>
     </div>
     <div class="card">
+      <h3 style="margin-top:0;">📅 Training program for the week</h3>
+      <div id="trainingProgram" style="font-size:0.88rem;"></div>
+    </div>
+    <div class="card">
       <h3 style="margin-top:0;">🔀 Compare two sessions</h3>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
         <select id="compareA" style="padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.82rem;"></select>
@@ -728,6 +770,53 @@
   </div>
 </div>
 
+<div id="tabAbout" style="display:none;">
+  <div class="card">
+    <h3 style="margin-top:0;">🎾 About AI Tennis Coach</h3>
+    <p style="color:var(--text); line-height:1.6;">
+      A free, browser-based AI coach that analyzes your tennis footage frame by frame — detecting shots,
+      estimating ball speed, spotting technique issues, and helping you track your progress over time.
+      Everything runs in your browser except your saved sessions, which are stored on your account.
+    </p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0;">📹 Filming tips</h3>
+    <ul style="color:var(--muted); line-height:1.7; padding-left:20px; margin: 0;">
+      <li><strong style="color:var(--text);">Camera angle:</strong> side-on to the court (standing at the fence facing the baseline), not directly behind the baseline</li>
+      <li><strong style="color:var(--text);">Position:</strong> tripod or steady surface — handheld footage makes tracking much less reliable</li>
+      <li><strong style="color:var(--text);">Distance:</strong> far enough back that a full court line is visible in frame</li>
+      <li><strong style="color:var(--text);">Lighting:</strong> good daylight or well-lit conditions, minimal shadows</li>
+      <li><strong style="color:var(--text);">Clip length:</strong> short clips (single rally or a few shots) work best</li>
+      <li><strong style="color:var(--text);">Background:</strong> avoid yellow-green surfaces that match the ball's color</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0;">❓ Common questions</h3>
+    <div style="line-height:1.6;">
+      <p><strong style="color:var(--lime);">Is the ball speed accurate?</strong><br>
+      <span style="color:var(--muted);">It's calibrated against court dimensions you mark, so real mph — but accuracy depends heavily on camera angle and how well the ball tracking picks up the ball. Treat it as a good estimate, not radar-gun precise.</span></p>
+
+      <p><strong style="color:var(--lime);">Can it tell forehand from backhand for lefties?</strong><br>
+      <span style="color:var(--muted);">Yes — set your dominant hand in your Profile so classification works correctly for you.</span></p>
+
+      <p><strong style="color:var(--lime);">How does the AI know it's tracking me and not my opponent?</strong><br>
+      <span style="color:var(--muted);">After uploading, use the "Tag yourself" button to click on yourself in the video. The app locks onto your clothing color and position, and tracks you across the whole video.</span></p>
+
+      <p><strong style="color:var(--lime);">Where's my data stored?</strong><br>
+      <span style="color:var(--muted);">Video processing happens entirely in your browser — no video ever leaves your device unless you explicitly save it. Session summaries (stats, feedback notes) are stored on your account so you can revisit them later.</span></p>
+
+      <p><strong style="color:var(--lime);">Why do match records get deleted after 3 months?</strong><br>
+      <span style="color:var(--muted);">To keep your history focused and manageable. Practice sessions are kept indefinitely. If you want to preserve a specific match, screenshot the report card or export the session as a PDF from the saved sessions list.</span></p>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0;">💬 Feedback</h3>
+    <p style="color:var(--muted); line-height:1.6;">
+      Bugs, ideas, features you'd like? Share them on your community post so other players can chime in too.
+    </p>
+  </div>
+</div>
+
 </main>
 
 <div id="onboardingModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:100; align-items:center; justify-content:center; padding:20px;">
@@ -803,6 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <script type="module">
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import jsPDF from "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm";
 
 // ---------- Supabase setup ----------
 // Replace these two values with your own project's URL and anon (public) key,
@@ -880,27 +970,44 @@ async function loadSessions() {
     .order('created_at', { ascending: false });
 
   if (error) {
-    historyList.textContent = 'Could not load sessions: ' + error.message;
+    historyList.innerHTML = `<div class="error-toast">⚠️ Could not load sessions: ${error.message}</div>`;
     return;
   }
   if (!data || data.length === 0) {
-    historyList.textContent = 'No sessions yet — analyze a video and it will be saved here.';
+    historyList.innerHTML = `
+      <div class="empty-state">
+        <div class="emoji">📼</div>
+        <div class="msg">No sessions yet</div>
+        <div class="hint">Analyze a video above and it'll be saved here for you to revisit.</div>
+      </div>`;
     return;
   }
   historyList.innerHTML = '';
   data.forEach(s => {
     const div = document.createElement('div');
     div.className = 'session-item';
+    div.style.flexDirection = 'column';
+    div.style.alignItems = 'stretch';
     const date = new Date(s.created_at).toLocaleString();
     const rewatchBtn = s.video_path
-      ? `<button class="secondary rewatch-btn" data-path="${s.video_path}" data-session-id="${s.id}" style="padding:3px 10px; font-size:0.75rem; margin-left:8px;">▶ Rewatch</button>`
+      ? `<button class="secondary rewatch-btn" data-path="${s.video_path}" data-session-id="${s.id}" style="padding:3px 10px; font-size:0.75rem;">▶ Rewatch</button>`
       : '';
     const matchTag = s.session_type === 'match'
       ? `<span style="background:#223a26; color:var(--lime); padding:2px 8px; border-radius:20px; font-size:0.7rem; margin-right:6px;">Match${s.match_score ? ' · ' + s.match_score : ''}${s.match_opponent ? ' vs ' + s.match_opponent : ''}</span>`
       : '';
     div.innerHTML = `
-      <span>${matchTag}<strong>${s.shot_count} shots</strong> &middot; avg ${s.avg_speed} mph &middot; top ${s.top_speed} mph &middot; mostly ${s.main_shot} ${rewatchBtn}</span>
-      <span class="meta">${date}</span>
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
+        <span>${matchTag}<strong>${s.shot_count} shots</strong></span>
+        <span class="meta">${date}</span>
+      </div>
+      <div style="color:var(--muted); font-size:0.82rem; margin-bottom:8px;">
+        avg ${s.avg_speed} mph &middot; top ${s.top_speed} mph &middot; mostly ${s.main_shot}
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        ${rewatchBtn}
+        <button class="secondary export-pdf-btn" data-session-id="${s.id}" style="padding:3px 10px; font-size:0.75rem;">📄 Export PDF</button>
+        <button class="secondary delete-session-btn" data-session-id="${s.id}" data-video-path="${s.video_path || ''}" style="padding:3px 10px; font-size:0.75rem; color:#e58585;">🗑 Delete</button>
+      </div>
     `;
     historyList.appendChild(div);
   });
@@ -911,7 +1018,7 @@ async function loadSessions() {
       const sessionId = btn.dataset.sessionId;
       btn.textContent = 'Loading…';
       const { data: signed, error } = await supabase.storage.from('session-videos').createSignedUrl(path, 3600);
-      if (error) { btn.textContent = 'Error'; alert(error.message); return; }
+      if (error) { btn.textContent = '▶ Rewatch'; alert('Could not load video: ' + error.message); return; }
       // load the saved session's events and playback in the review card
       const session = data.find(x => x.id === sessionId);
       if (session) {
@@ -945,9 +1052,105 @@ async function loadSessions() {
       reviewCard.scrollIntoView({ behavior: 'smooth' });
     });
   });
+
+  historyList.querySelectorAll('.delete-session-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this session permanently? This cannot be undone.')) return;
+      const sessionId = btn.dataset.sessionId;
+      const videoPath = btn.dataset.videoPath;
+      btn.textContent = 'Deleting…';
+      if (videoPath) {
+        await supabase.storage.from('session-videos').remove([videoPath]);
+      }
+      const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
+      if (error) { alert('Delete failed: ' + error.message); btn.textContent = '🗑 Delete'; return; }
+      loadSessions();
+    });
+  });
+
+  historyList.querySelectorAll('.export-pdf-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sessionId = btn.dataset.sessionId;
+      const session = data.find(x => x.id === sessionId);
+      if (session) exportSessionAsPDF(session);
+    });
+  });
 }
 
 let lastSavedSessionId = null;
+
+function exportSessionAsPDF(session) {
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const w = doc.internal.pageSize.getWidth();
+  const dateStr = new Date(session.created_at).toLocaleString();
+
+  // Header band
+  doc.setFillColor(13, 27, 15);
+  doc.rect(0, 0, w, 90, 'F');
+  doc.setTextColor(196, 229, 56);
+  doc.setFontSize(22);
+  doc.setFont(undefined, 'bold');
+  doc.text('AI Tennis Coach — Session Report', 40, 45);
+  doc.setTextColor(200, 220, 200);
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(11);
+  doc.text(dateStr, 40, 65);
+
+  let y = 120;
+  doc.setTextColor(20, 20, 20);
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('Session summary', 40, y);
+  y += 20;
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(11);
+  const summaryLines = [
+    `Type: ${session.session_type === 'match' ? 'Match' : 'Practice'}`,
+    session.match_opponent ? `Opponent: ${session.match_opponent}` : null,
+    session.match_score ? `Score: ${session.match_score}` : null,
+    `Total shots: ${session.shot_count}`,
+    `Average speed: ${session.avg_speed} mph`,
+    `Top speed: ${session.top_speed} mph`,
+    `Most-used shot: ${session.main_shot}`
+  ].filter(Boolean);
+  summaryLines.forEach(line => { doc.text(line, 50, y); y += 16; });
+
+  y += 10;
+  doc.setFont(undefined, 'bold');
+  doc.setFontSize(14);
+  doc.text('Shot-by-shot breakdown', 40, y);
+  y += 20;
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(10);
+
+  const events = session.events || [];
+  if (events.length === 0) {
+    doc.text('No shots recorded.', 50, y);
+  } else {
+    events.forEach((e, i) => {
+      if (y > 720) { doc.addPage(); y = 60; }
+      const m = Math.floor(e.time / 60);
+      const s = Math.floor(e.time % 60).toString().padStart(2, '0');
+      const line = `${i+1}. [${m}:${s}] ${e.type} — ${e.speedEst} mph${e.spin && e.spin !== '—' ? ' (' + e.spin + ')' : ''}`;
+      doc.setFont(undefined, 'bold');
+      doc.text(line, 50, y);
+      y += 14;
+      if (e.note) {
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(80, 80, 80);
+        const wrapped = doc.splitTextToSize(e.note, w - 100);
+        wrapped.forEach(w2 => { doc.text(w2, 60, y); y += 12; });
+        doc.setTextColor(20, 20, 20);
+      }
+      y += 4;
+    });
+  }
+
+  doc.setFontSize(9);
+  doc.setTextColor(120, 120, 120);
+  doc.text('Generated by AI Tennis Coach', 40, doc.internal.pageSize.getHeight() - 30);
+  doc.save(`tennis-session-${session.id.slice(0, 8)}.pdf`);
+}
 
 async function saveSessionToSupabase(summary) {
   if (!currentUser) return; // not logged in, skip silently
@@ -1037,6 +1240,7 @@ function showTab(tab) {
   tabCommunity.style.display = tab === 'community' ? 'block' : 'none';
   document.getElementById('tabLeaderboard').style.display = tab === 'leaderboard' ? 'block' : 'none';
   document.getElementById('tabProfile').style.display = tab === 'profile' ? 'block' : 'none';
+  document.getElementById('tabAbout').style.display = tab === 'about' ? 'block' : 'none';
   track('tab_view', { tab });
   if (tab === 'dashboard') renderDashboard();
   if (tab === 'community') loadCommunityFeed();
@@ -1048,6 +1252,7 @@ navDashboard.addEventListener('click', () => showTab('dashboard'));
 navCommunity.addEventListener('click', () => showTab('community'));
 document.getElementById('navLeaderboard').addEventListener('click', () => showTab('leaderboard'));
 document.getElementById('navProfile').addEventListener('click', () => showTab('profile'));
+document.getElementById('navAbout').addEventListener('click', () => showTab('about'));
 
 // ---------- Dashboard ----------
 const dashboardLoggedOut = document.getElementById('dashboardLoggedOut');
@@ -1069,10 +1274,17 @@ async function renderDashboard() {
     .order('created_at', { ascending: true });
 
   if (error || !data || data.length === 0) {
-    document.getElementById('speedChartWrap').innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">No sessions yet — analyze a video first.</p>';
-    document.getElementById('shotMixWrap').innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Nothing to show yet.</p>';
-    document.getElementById('drillSuggestions').innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Drill suggestions will appear once you have a few sessions logged.</p>';
-    document.getElementById('weeklySummaries').innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Weekly summaries appear here once you have sessions.</p>';
+    const empty = section => `
+      <div class="empty-state">
+        <div class="emoji">📊</div>
+        <div class="msg">Nothing to show yet</div>
+        <div class="hint">${section}</div>
+      </div>`;
+    document.getElementById('speedChartWrap').innerHTML = empty('Analyze a video and your progress will start here.');
+    document.getElementById('shotMixWrap').innerHTML = empty('Your shot type breakdown will appear here.');
+    document.getElementById('drillSuggestions').innerHTML = empty('Drill suggestions unlock once we spot recurring patterns.');
+    document.getElementById('weeklySummaries').innerHTML = empty('Weekly summaries appear here after your first session.');
+    document.getElementById('trainingProgram').innerHTML = empty('Your personalized training program appears here.');
     return;
   }
 
@@ -1080,6 +1292,7 @@ async function renderDashboard() {
   renderShotMix(data);
   renderDrillSuggestions(data);
   renderWeeklySummaries(data);
+  renderTrainingProgram(data);
   loadComparisonOptions();
 }
 
@@ -1164,6 +1377,60 @@ function renderDrillSuggestions(sessions) {
       <p style="margin:6px 0 0; color:var(--muted);">${d.desc}</p>
     </div>`;
   }).join('');
+}
+
+function renderTrainingProgram(sessions) {
+  const box = document.getElementById('trainingProgram');
+  // count recurring issue types (same keywords used by drill suggestions)
+  const issueCounts = {};
+  sessions.forEach(s => {
+    (s.events || []).forEach(e => {
+      const note = (e.note || '').toLowerCase();
+      if (note.includes('late') || note.includes('close to body')) issueCounts.late_contact = (issueCounts.late_contact||0)+1;
+      if (note.includes('higher') || note.includes('extension')) issueCounts.serve_extension = (issueCounts.serve_extension||0)+1;
+      if (note.includes('follow-through')) issueCounts.follow_through = (issueCounts.follow_through||0)+1;
+      if (note.includes('rotation') || note.includes('square to the net')) issueCounts.rotation = (issueCounts.rotation||0)+1;
+      if (note.includes('knee') || note.includes('knees')) issueCounts.knee_bend = (issueCounts.knee_bend||0)+1;
+      if (note.includes('balance') || note.includes('off-balance')) issueCounts.balance = (issueCounts.balance||0)+1;
+    });
+  });
+
+  const dayDrills = {
+    late_contact: 'Feed-ball drill: partner feeds slightly earlier than comfortable. Focus on meeting the ball out in front of your body.',
+    serve_extension: 'Wall toss drill: 5 sets of 10 tosses, aiming for full extension release. Add the swing back in after.',
+    follow_through: 'Shadow swings: 5 sets of 10 backhands finishing with the racket high over your opposite shoulder.',
+    rotation: 'Split-step rotation drill: exaggerated shoulder turn before each shot. Work on separating hip and shoulder rotation.',
+    knee_bend: 'Wall rally with focus on bending the knees to load into each shot. 20 shots per side.',
+    balance: 'Balance drill: hit a series of shots, then freeze in your finish position for 2 seconds each. Reveals which shots pull you off-balance.'
+  };
+  const restDay = 'Rest & recovery — light stretching, foam rolling, or a walk. Repair is part of training.';
+  const cardio = 'Cardio + footwork: 20 minutes of light running plus ladder drills. Speed on court starts with fitness off court.';
+
+  const topIssues = Object.entries(issueCounts).sort((a,b) => b[1]-a[1]).map(([k]) => k);
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const plan = [];
+  let i = 0;
+  days.forEach((day, idx) => {
+    if (idx === 3) plan.push({ day, drill: cardio });
+    else if (idx === 6) plan.push({ day, drill: restDay });
+    else if (topIssues[i] && dayDrills[topIssues[i]]) {
+      plan.push({ day, drill: dayDrills[topIssues[i]] });
+      i++;
+    } else {
+      plan.push({ day, drill: 'Free hitting — focus on whichever shot felt weakest in your last session.' });
+    }
+  });
+
+  if (topIssues.length === 0) {
+    box.innerHTML = '<p style="color:var(--muted); margin:0 0 12px;">Log a few more sessions and your personalized 7-day program will appear here.</p>' +
+      plan.map(p => `<div style="background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:6px;">
+        <strong style="color:var(--lime);">${p.day}</strong> — <span style="color:var(--muted);">${p.drill}</span>
+      </div>`).join('');
+  } else {
+    box.innerHTML = plan.map(p => `<div style="background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:6px;">
+      <strong style="color:var(--lime);">${p.day}</strong> — ${p.drill}
+    </div>`).join('');
+  }
 }
 
 function renderWeeklySummaries(sessions) {
@@ -1256,11 +1523,16 @@ async function loadCommunityFeed() {
     .limit(50);
 
   if (error) {
-    feed.innerHTML = `<p style="color:var(--muted);">Could not load community feed: ${error.message}</p>`;
+    feed.innerHTML = `<div class="error-toast">⚠️ Could not load community feed: ${error.message}</div>`;
     return;
   }
   if (!data || data.length === 0) {
-    feed.innerHTML = '<p style="color:var(--muted);">No public sessions yet — be the first to share one from the Analyze tab.</p>';
+    feed.innerHTML = `
+      <div class="empty-state">
+        <div class="emoji">🌍</div>
+        <div class="msg">No public sessions yet</div>
+        <div class="hint">Be the first to share one from the Analyze tab.</div>
+      </div>`;
     return;
   }
 
@@ -1464,7 +1736,7 @@ async function renderPersonalBests() {
   const box = document.getElementById('personalBestsBox');
   if (!currentUser) return;
   const { data } = await supabase.from('sessions').select('events').eq('user_id', currentUser.id);
-  if (!data || data.length === 0) { box.innerHTML = '<p style="color:var(--muted);">Analyze a session to see your personal bests.</p>'; return; }
+  if (!data || data.length === 0) { box.innerHTML = '<div class="empty-state"><div class="emoji">🏅</div><div class="msg">No personal bests yet</div><div class="hint">Analyze a session and your top speeds per shot type will appear here.</div></div>'; return; }
   const bests = {};
   data.forEach(s => {
     (s.events || []).forEach(e => {
@@ -1483,7 +1755,7 @@ async function renderBadges() {
   const box = document.getElementById('badgesBox');
   if (!currentUser) return;
   const { data } = await supabase.from('sessions').select('created_at').eq('user_id', currentUser.id).order('created_at', { ascending: false });
-  if (!data || data.length === 0) { box.innerHTML = '<p style="color:var(--muted);">Analyze a session to start earning badges.</p>'; return; }
+  if (!data || data.length === 0) { box.innerHTML = '<div class="empty-state"><div class="emoji">🎖</div><div class="msg">No badges yet</div><div class="hint">Analyze your first session to earn your first badge.</div></div>'; return; }
 
   const totalSessions = data.length;
   const dates = data.map(s => new Date(s.created_at).toDateString());
@@ -1540,7 +1812,7 @@ async function loadLeaderboard() {
   // fetch opted-in profiles + their sessions
   const { data: optedProfiles } = await supabase.from('profiles').select('id, username').eq('leaderboard_opt_in', true);
   if (!optedProfiles || optedProfiles.length === 0) {
-    list.innerHTML = '<p style="color:var(--muted);">No one has opted in yet. Be the first from your Profile tab.</p>';
+    list.innerHTML = '<div class="empty-state"><div class="emoji">🏆</div><div class="msg">No one has opted in yet</div><div class="hint">Turn on "Show my top speeds on the leaderboard" in your Profile tab to be the first.</div></div>';
     return;
   }
   const idMap = Object.fromEntries(optedProfiles.map(p => [p.id, p.username || 'anonymous']));
@@ -1557,7 +1829,7 @@ async function loadLeaderboard() {
   });
 
   const rows = Object.entries(bests).sort((a,b) => b[1].mph - a[1].mph).slice(0, 50);
-  if (rows.length === 0) { list.innerHTML = '<p style="color:var(--muted);">No qualifying shots yet.</p>'; return; }
+  if (rows.length === 0) { list.innerHTML = '<div class="empty-state"><div class="emoji">🎯</div><div class="msg">No qualifying shots yet</div><div class="hint">Try a different shot type filter, or opt in from Profile.</div></div>'; return; }
 
   list.innerHTML = rows.map(([uid, data], i) => `
     <div style="display:flex; justify-content:space-between; align-items:center; background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:8px;">
@@ -1880,6 +2152,7 @@ skipCalibBtn.addEventListener('click', () => {
 
 overlay.addEventListener('click', (e) => {
   if (calibPoints.length >= 2) return;
+  if (courtCalibMode || tagMode) return; // let those handlers own the click
   const rect = overlay.getBoundingClientRect();
   const scaleX = overlay.width / rect.width;
   const scaleY = overlay.height / rect.height;
@@ -1961,6 +2234,9 @@ function loadVideo(file) {
     ballCanvas.width = video.videoWidth;
     ballCanvas.height = video.videoHeight;
   };
+  video.onerror = () => {
+    analysisStatus.innerHTML = '<div class="error-toast">⚠️ This video file couldn\'t be loaded. Try MP4 with H.264 codec, or MOV / WebM.</div>';
+  };
   reviewCard.scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -1973,21 +2249,26 @@ resetBtn.addEventListener('click', () => {
 
 async function ensurePoseModel() {
   if (poseLandmarker) return;
-  analysisStatus.textContent = 'Loading pose model (first time only)...';
-  const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
-  );
-  const multiOn = document.getElementById('multiPlayerToggle').checked;
-  poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
-    baseOptions: {
-      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
-      delegate: "GPU"
-    },
-    runningMode: "VIDEO",
-    numPoses: multiOn ? 2 : 1
-  });
-  drawingUtils = new DrawingUtils(ctx);
-  analysisStatus.textContent = 'Model loaded. Analyzing...';
+  analysisStatus.innerHTML = '<span class="spinner"></span>Loading pose model (first time only)…';
+  try {
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+    );
+    const multiOn = document.getElementById('multiPlayerToggle').checked;
+    poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+        delegate: "GPU"
+      },
+      runningMode: "VIDEO",
+      numPoses: multiOn ? 2 : 1
+    });
+    drawingUtils = new DrawingUtils(ctx);
+    analysisStatus.innerHTML = '<span class="spinner"></span>Model loaded. Analyzing…';
+  } catch (err) {
+    analysisStatus.innerHTML = `<div class="error-toast">⚠️ Could not load the pose model — check your internet connection and try again. (${err.message})</div>`;
+    throw err;
+  }
 }
 
 // ---------- Ball tracking (color + motion based) ----------
@@ -2040,18 +2321,28 @@ function pxToMph(pxPerSec) {
 analyzeBtn.addEventListener('click', async () => {
   if (!video.src) return;
   if (!calibSkipped && !pxPerFoot) {
-    analysisStatus.textContent = 'Tip: calibrate above for real mph, or click "Skip" to use rough estimates.';
+    analysisStatus.innerHTML = 'Tip: calibrate above for real mph, or click "Skip" to use rough estimates.';
   }
   analyzeBtn.disabled = true;
+  analyzeBtn.innerHTML = '<span class="spinner dark"></span>Analyzing…';
   analyzing = true;
   events = [];
   ballHistory = [];
   feedbackList.innerHTML = '';
-  await ensurePoseModel();
+  try {
+    await ensurePoseModel();
+  } catch { analyzeBtn.disabled = false; analyzeBtn.textContent = '▶ Analyze Video'; return; }
 
   video.currentTime = 0;
   video.muted = true;
-  await video.play();
+  try {
+    await video.play();
+  } catch (err) {
+    analysisStatus.innerHTML = `<div class="error-toast">⚠️ Couldn't play this video (${err.message}). Try a different file — MP4 with H.264 codec works best.</div>`;
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = '▶ Analyze Video';
+    return;
+  }
 
   let lastWristX = null, lastWristY = null;
   let lastLWristX = null, lastLWristY = null;
@@ -2371,6 +2662,7 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
   cancelAnimationFrame(rafId);
   analyzing = false;
   analyzeBtn.disabled = false;
+  analyzeBtn.textContent = '▶ Analyze Video';
   popup.style.display = 'none';
 
   // ---- Rally segmentation ----
@@ -2507,8 +2799,15 @@ async function openCamera() {
     recordPreview.srcObject = mediaStream;
     recordCard.style.display = 'block';
     recordCard.scrollIntoView({ behavior: 'smooth' });
+    recordStatus.textContent = '';
   } catch (err) {
-    alert('Camera access denied or unavailable: ' + err.message);
+    let msg;
+    if (err.name === 'NotAllowedError') msg = "Camera access was denied. Enable it in your browser's site settings and try again.";
+    else if (err.name === 'NotFoundError') msg = 'No camera detected on this device.';
+    else if (err.name === 'NotReadableError') msg = 'Camera is already in use by another app.';
+    else msg = 'Camera unavailable: ' + err.message;
+    recordCard.style.display = 'block';
+    recordStatus.innerHTML = `<div class="error-toast">⚠️ ${msg}</div>`;
   }
 }
 
