@@ -125,7 +125,22 @@ a:hover { color: #e7f78a; }
   color: var(--text);
   border: 1px solid rgba(214, 239, 74, 0.4);
 }
-.brand svg, .app-logo { width: 36px; height: 36px; }
+.brand svg, .app-logo { width: 36px; height: 36px; border-radius: 10px; }
+.shot-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.shot-filters[hidden] { display: none; }
+.chip, .call-jump {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.chip.on { background: var(--lime); color: #15260f; border-color: transparent; font-weight: 700; }
+.call-jump { margin: 0 8px 8px 0; }
+#courtHeatmap { width: min(220px, 70vw); height: auto; display: block; margin: 0 auto; }
 .top-link {
   color: var(--text);
   text-decoration: none;

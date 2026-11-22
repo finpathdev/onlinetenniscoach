@@ -3,7 +3,7 @@
    Cross-origin pose models are cached after the first successful load.
    Supabase is never cached. */
 
-const CACHE_NAME = "tennis-coach-v3";
+const CACHE_NAME = "tennis-coach-v4";
 const SHELL = [
   "./",
   "./index.html",

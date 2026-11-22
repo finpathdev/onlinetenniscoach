@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "AI Tennis Coach",
-  "short_name": "Tennis Coach",
-  "description": "Free tennis coach in your browser. Film a rally, get shot-by-shot feedback, and keep your progress on this device.",
+  "name": "LimeCourt",
+  "short_name": "LimeCourt",
+  "description": "Free tennis coach in your browser. Film a rally, see the ball trail and the calls you can trust, and keep progress on this device.",
   "start_url": "./app.html",
   "scope": "./",
   "display": "standalone",

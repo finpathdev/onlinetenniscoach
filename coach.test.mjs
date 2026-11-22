@@ -17,7 +17,17 @@ import {
   buildSampleSession,
   focusLine,
   consecutiveStreak,
-  dayKey
+  dayKey,
+  courtHomography,
+  projectToCourt,
+  lineCall,
+  findBounces,
+  ballSpeedMph,
+  callBounces,
+  sessionBoard,
+  quietSpans,
+  detectCourtLines,
+  liveStrokeTick
 } from "./coach.js";
 
 const feet = Object.fromEntries(COURT_REFERENCES.map(r => [r.feet, r.label]));
@@ -175,5 +185,67 @@ assert.equal(DRILLS.length, 6);
 assert.equal(consecutiveStreak(["2026-11-20", "2026-11-21", "2026-11-22"], new Date("2026-11-22T15:00:00")), 3);
 assert.equal(consecutiveStreak(["2026-11-18"], new Date("2026-11-22T15:00:00")), 0);
 assert.equal(dayKey(new Date("2026-11-22T23:00:00")), "2026-11-22");
+
+const H = courtHomography([
+  { x: 0, y: 1 },
+  { x: 1, y: 1 },
+  { x: 0.8, y: 0.2 },
+  { x: 0.2, y: 0.2 }
+]);
+const mid = projectToCourt(H, 0.5, 0.6);
+assert.ok(mid.x > 8 && mid.x < 19, mid.x);
+assert.ok(mid.y > 10 && mid.y < 68, mid.y);
+assert.equal(lineCall({ x: 13.5, y: 39 }).call, "in");
+assert.equal(lineCall({ x: 13.5, y: 39 }).confidence, "high");
+assert.equal(lineCall({ x: 32, y: 40 }).call, "out");
+assert.equal(lineCall({ x: 27.4, y: 40 }).confidence, "low");
+
+const bounceTrack = [0, 1, 2, 3, 4, 5, 6].map(i => ({
+  t: i * 0.1,
+  x: 10,
+  y: [10, 30, 55, 80, 50, 25, 15][i],
+  nx: 0.5,
+  ny: [10, 30, 55, 80, 50, 25, 15][i] / 100
+}));
+const bounces = findBounces(bounceTrack, 100);
+assert.equal(bounces.length, 1);
+assert.ok(Math.abs(bounces[0].t - 0.3) < 0.05);
+
+const speedTrack = [0, 1, 2, 3].map(i => ({ t: i * 0.1, x: i * 80, y: 40 }));
+assert.equal(ballSpeedMph(speedTrack, 0.15, 8, 400) > 20, true);
+assert.equal(ballSpeedMph([{ t: 0, x: 0, y: 0 }, { t: 0.05, x: 4, y: 0 }], 0, 10, 400), null);
+
+const called = callBounces([{ t: 1, x: 0, y: 0, nx: 0.5, ny: 0.6 }], H, "low");
+assert.equal(called[0].confidence, "low");
+const emptyBoard = sessionBoard({ events: [{ time: 1, type: "Serve / Overhead" }], bounces: [], rallies: [] });
+assert.equal(emptyBoard.firstServePct, null);
+assert.equal(emptyBoard.winners, null);
+assert.equal(emptyBoard.errors, null);
+const gaps = quietSpans([{ time: 2 }, { time: 8 }], 12, 2.4);
+assert.equal(gaps.length >= 1, true);
+
+const width = 40;
+const height = 30;
+const data = new Uint8ClampedArray(width * height * 4);
+for (let i = 0; i < data.length; i += 4) {
+  data[i] = 30; data[i + 1] = 90; data[i + 2] = 50; data[i + 3] = 255;
+}
+function paintRow(y, x0, x1) {
+  for (let x = x0; x <= x1; x++) {
+    const i = (y * width + x) * 4;
+    data[i] = data[i + 1] = data[i + 2] = 230;
+  }
+}
+paintRow(8, 12, 28);
+paintRow(24, 4, 36);
+const found = detectCourtLines({ width, height, data });
+assert.ok(found.corners, found.reason);
+assert.equal(found.corners.length, 4);
+
+const tick = liveStrokeTick(
+  { t: 1, wristX: 0.4, wristY: 0.5, shoulderY: 0.45, torso: 0.08, lastShot: 0 },
+  { t: 1.2, wristX: 0.7, wristY: 0.3, shoulderY: 0.45, torso: 0.08 }
+);
+assert.equal(tick.shot, true);
 
 console.log("coach.test.mjs: ok");

@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Tennis Coach</title>
+<title>LimeCourt</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#07110c">
 <meta name="description" content="Film a rally and get shot-by-shot tennis coaching in your browser. Progress stays on this device.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Tennis Coach">
+<meta name="apple-mobile-web-app-title" content="LimeCourt">
 <link rel="apple-touch-icon" href="logo-180.png">
 <link rel="icon" href="logo-192.png" type="image/png">
 <style>
@@ -347,13 +347,8 @@
 <script src="bg.js"></script>
 <header class="site-header">
   <a class="brand" href="index.html">
-    <svg class="app-logo" viewBox="0 0 100 100" aria-hidden="true">
-      <circle cx="50" cy="50" r="46" fill="#07110c" stroke="#d6ef4a" stroke-width="3"/>
-      <circle cx="50" cy="50" r="34" fill="#d6ef4a"/>
-      <path d="M18 50 C 32 28, 68 28, 82 50" stroke="#14301c" stroke-width="4" fill="none"/>
-      <path d="M18 50 C 32 72, 68 72, 82 50" stroke="#14301c" stroke-width="4" fill="none"/>
-    </svg>
-    AI Tennis Coach
+    <img class="app-logo" src="logo-192.png" alt="" width="36" height="36">
+    LimeCourt
   </a>
   <div class="header-actions">
     <p style="margin:0;">Shot-by-shot feedback, in the browser.</p>
@@ -371,7 +366,7 @@
       <li>Scroll down and tap <strong style="color:var(--text);">"Add to Home Screen"</strong></li>
       <li>Tap <strong style="color:var(--text);">Add</strong> in the top-right</li>
     </ol>
-    <p style="color:var(--muted); font-size:0.82rem;">The app will appear on your home screen with the Tennis Coach icon and open like a native app.</p>
+    <p style="color:var(--muted); font-size:0.82rem;">The app will appear on your home screen with the LimeCourt icon and open like a native app.</p>
     <button id="iosModalCloseBtn" style="margin-top:8px;">Got it</button>
   </div>
 </div>
@@ -427,7 +422,7 @@
     <div style="margin-top:16px; font-size: 0.85rem; color: var(--muted); line-height: 1.6;">
       <strong style="color: var(--text);">📹 For the most accurate analysis, film like this:</strong>
       <ul style="margin: 8px 0 0; padding-left: 20px;">
-        <li><strong>Camera angle:</strong> side-on to the court (standing at the net post or fence, facing the baseline), not from directly behind the baseline.</li>
+        <li><strong>Camera angle:</strong> side-on, around the net post, with one player large in the frame. A phone high behind the baseline can count swings, but contact and line calls stay low confidence.</li>
         <li><strong>Camera position:</strong> mount on a tripod or steady surface — handheld footage makes ball tracking much less reliable.</li>
         <li><strong>Distance:</strong> far enough back that a full court line (baseline or singles sideline) is visible in frame — you'll use it to calibrate speed.</li>
         <li><strong>Lighting:</strong> film in good daylight or well-lit conditions; avoid heavy shadows across the court.</li>
@@ -446,6 +441,11 @@
       <button class="secondary" id="switchCameraBtn">🔄 Switch camera</button>
       <button class="secondary" id="cancelRecordBtn">Cancel</button>
       <span id="recordStatus" style="color:var(--muted); font-size:0.85rem;"></span>
+    </div>
+    <div id="liveCueBox" style="margin-top:12px;">
+      <div id="liveCount" style="font-size:1.6rem; font-weight:700; color:var(--lime);">0</div>
+      <div style="color:var(--muted); font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase;">Swings this take</div>
+      <p id="liveCue" style="color:var(--text); font-size:0.88rem; margin:8px 0 0;">Live cues start when you record, if this device can run the pose model. The video stays on the phone.</p>
     </div>
   </div>
 
@@ -570,6 +570,22 @@
 
     <div id="analysisStatus" style="margin-top:10px; color: var(--muted); font-size: 0.85rem;"></div>
 
+    <div id="matchBoard" style="display:none; margin-top:16px;">
+      <h4 style="margin:0 0 8px; color:var(--lime);">Match board</h4>
+      <div class="stats-grid" id="boardGrid"></div>
+      <p id="boardNote" style="color:var(--muted); font-size:0.82rem;"></p>
+      <div id="callList" style="font-size:0.85rem;"></div>
+    </div>
+
+    <div class="shot-filters" id="shotFilters" hidden>
+      <button type="button" class="chip on" data-shot="all">All</button>
+      <button type="button" class="chip" data-shot="Serve / Overhead">Serves</button>
+      <button type="button" class="chip" data-shot="Forehand">Forehands</button>
+      <button type="button" class="chip" data-shot="Backhand">Backhands</button>
+      <button type="button" class="chip" data-shot="Volley">Volleys</button>
+      <button type="button" class="chip" id="skipQuietBtn">Skip quiet parts</button>
+    </div>
+
     <div class="stats-grid" id="statsGrid" style="display:none;">
       <div class="stat"><div class="val" id="statShots">0</div><div class="label">Shots Detected</div></div>
       <div class="stat"><div class="val" id="statAvgSpeed">0</div><div class="label">Avg Ball Speed (mph)</div></div>
@@ -606,7 +622,8 @@
       <p style="color:var(--muted); font-size:0.8rem; margin:0 0 8px;">
         Click 4 corners of the court on the video frame to calibrate the top-down view:
         near-left → near-right → far-right → far-left.
-        <button class="secondary" id="startCourtCalib" style="padding:3px 10px; font-size:0.75rem; margin-left:6px;">Start court calibration</button>
+        <button class="secondary" id="autoCourtBtn" style="padding:3px 10px; font-size:0.75rem; margin-left:6px;">Find the lines</button>
+        <button class="secondary" id="startCourtCalib" style="padding:3px 10px; font-size:0.75rem; margin-left:6px;">Tap four corners</button>
         <button class="secondary" id="resetCourtCalib" style="padding:3px 10px; font-size:0.75rem;">Reset</button>
         <span id="courtCalibStatus" style="margin-left:8px; font-size:0.78rem;"></span>
       </p>
@@ -758,7 +775,7 @@
 
 <div id="tabAbout" style="display:none;">
   <div class="card">
-    <h3 style="margin-top:0;">🎾 About AI Tennis Coach</h3>
+    <h3 style="margin-top:0;">About LimeCourt</h3>
     <p style="color:var(--text); line-height:1.6;">
       A free, browser-based AI coach that analyzes your tennis footage frame by frame — detecting shots,
       estimating ball speed, spotting technique issues, and helping you track your progress over time.
@@ -822,7 +839,7 @@
 
 <div id="toast" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--lime); color:#15260f; padding:12px 20px; border-radius:10px; font-weight:600; font-size:0.9rem; z-index:120; box-shadow:0 4px 20px rgba(0,0,0,0.4);"></div>
 
-<footer>AI Tennis Coach. Pose analysis stays in the browser. An account is optional.</footer>
+<footer>LimeCourt. Pose analysis stays in the browser. An account is optional.</footer>
 
 <script src="pwa.js"></script>
 <script>
@@ -884,6 +901,15 @@ import {
   tallyIssuesFromSessions,
   focusLine,
   noteForShot,
+  courtHomography,
+  findBounces,
+  ballSpeedMph,
+  scaleFromBaseline,
+  callBounces,
+  sessionBoard,
+  quietSpans,
+  detectCourtLines,
+  liveStrokeTick,
   suggestedDrillIds,
   buildWeekPlan,
   buildSampleSession,
@@ -1094,7 +1120,7 @@ async function loadSessions() {
         <span class="meta">${date}</span>
       </div>
       <div style="color:var(--muted); font-size:0.82rem; margin-bottom:8px;">
-        avg ${s.avg_speed} mph &middot; top ${s.top_speed} mph &middot; mostly ${s.main_shot}
+        avg ${s.avg_speed || "—"} mph &middot; top ${s.top_speed || "—"} mph &middot; mostly ${escapeHtml(s.main_shot || "—")}${s.board && s.board.firstServePct != null ? " · first serve " + s.board.firstServePct + "%" : ""}
       </div>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
         ${rewatchBtn}
@@ -1205,7 +1231,7 @@ async function exportSessionAsPDF(session) {
   doc.setTextColor(196, 229, 56);
   doc.setFontSize(22);
   doc.setFont(undefined, 'bold');
-  doc.text('AI Tennis Coach — Session Report', 40, 45);
+  doc.text('LimeCourt — Session Report', 40, 45);
   doc.setTextColor(200, 220, 200);
   doc.setFont(undefined, 'normal');
   doc.setFontSize(11);
@@ -1264,7 +1290,7 @@ async function exportSessionAsPDF(session) {
 
   doc.setFontSize(9);
   doc.setTextColor(120, 120, 120);
-  doc.text('Generated by AI Tennis Coach', 40, doc.internal.pageSize.getHeight() - 30);
+  doc.text('Generated by LimeCourt', 40, doc.internal.pageSize.getHeight() - 30);
   doc.save(`tennis-session-${session.id.slice(0, 8)}.pdf`);
 }
 
@@ -1319,7 +1345,8 @@ async function saveSessionToSupabase(summary) {
     match_score: summary.matchScore || null,
     is_public: false,
     caption: '',
-    video_path: null
+    video_path: null,
+    board: summary.board || window._board || null
   };
   saveLocalSessions([localSession, ...loadLocalSessions().filter(s => s.id !== localSession.id)]);
   lastSavedSessionId = localSession.id;
@@ -2122,36 +2149,125 @@ document.addEventListener('click', (e) => {
 // The user clicks 4 corners of the court in the video (baseline-left, baseline-right,
 // far-baseline-right, far-baseline-left) to map ball positions onto a top-down court.
 let courtCorners = []; // array of {x,y} in overlay-normalized coords (0-1)
+let courtConfidence = "low";
+let ballTrack = [];
+let shotFilter = "all";
+let skipQuiet = false;
 
 function renderCourtHeatmap() {
   const svg = document.getElementById('courtHeatmap');
   if (!svg) return;
-  const w = 200, h = 300; // top-down court aspect
-  // draw court outline
+  const W = 108;
+  const H = 312;
+  svg.setAttribute("viewBox", `0 0 ${W + 16} ${H + 16}`);
+  const serviceNear = 8 + (18 / 78) * H;
+  const serviceFar = 8 + (60 / 78) * H;
   let content = `
-    <rect x="10" y="10" width="${w-20}" height="${h-20}" fill="#0d1b0f" stroke="#c4e538" stroke-width="2"/>
-    <line x1="10" y1="${h/2}" x2="${w-10}" y2="${h/2}" stroke="#c4e538" stroke-width="2"/>
-    <line x1="${w/2}" y1="60" x2="${w/2}" y2="${h-60}" stroke="#c4e538" stroke-width="1"/>
-    <line x1="10" y1="60" x2="${w-10}" y2="60" stroke="#c4e538" stroke-width="1" stroke-dasharray="3,3"/>
-    <line x1="10" y1="${h-60}" x2="${w-10}" y2="${h-60}" stroke="#c4e538" stroke-width="1" stroke-dasharray="3,3"/>
+    <rect x="8" y="8" width="${W}" height="${H}" rx="4" fill="#0c1a12" stroke="#d6ef4a" stroke-width="2"/>
+    <line x1="8" y1="${8 + H / 2}" x2="${8 + W}" y2="${8 + H / 2}" stroke="#d6ef4a" stroke-width="1.4"/>
+    <line x1="8" y1="${serviceNear}" x2="${8 + W}" y2="${serviceNear}" stroke="#d6ef4a" stroke-width="1" opacity="0.75"/>
+    <line x1="8" y1="${serviceFar}" x2="${8 + W}" y2="${serviceFar}" stroke="#d6ef4a" stroke-width="1" opacity="0.75"/>
+    <line x1="${8 + W / 2}" y1="${serviceNear}" x2="${8 + W / 2}" y2="${serviceFar}" stroke="#d6ef4a" stroke-width="1" opacity="0.75"/>
+    <text x="${8 + W / 2}" y="${H + 20}" text-anchor="middle" fill="#c5d4c2" font-size="11">near baseline</text>
   `;
-  // plot dots (using ballX/ballY normalized 0-1 as a very rough approximation)
-  const shotDots = events.filter(e => e.ballX != null && e.ballY != null);
-  if (courtCorners.length === 4) {
-    // simple bilinear mapping
-    shotDots.forEach(e => {
-      const p = mapToCourt(e.ballX, e.ballY, courtCorners, w-20, h-20);
-      content += `<circle cx="${10 + p.x}" cy="${10 + p.y}" r="4" fill="#ffe14d" opacity="0.7"/>`;
+  const marks = (window._bounces || []).filter(b => b.feet);
+  if (marks.length) {
+    marks.forEach(b => {
+      const cx = 8 + Math.max(0, Math.min(W, (b.feet.x / 27) * W));
+      const cy = 8 + Math.max(0, Math.min(H, (b.feet.y / 78) * H));
+      const color = b.confidence === "low" ? "#9aa894" : b.call === "out" ? "#f0b4b4" : "#d6ef4a";
+      content += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="5" fill="${color}" opacity="0.9"/>`;
     });
-  } else {
-    // fallback: use raw ballX/ballY as horizontal position only
-    shotDots.forEach(e => {
-      const cx = 10 + e.ballX * (w - 20);
-      const cy = 10 + e.ballY * (h - 20);
-      content += `<circle cx="${cx}" cy="${cy}" r="4" fill="#ffe14d" opacity="0.6"/>`;
+  } else if (courtCorners.length === 4) {
+    events.filter(e => e.ballX != null).forEach(e => {
+      const p = mapToCourt(e.ballX, e.ballY, courtCorners, W, H);
+      content += `<circle cx="${(8 + p.x).toFixed(1)}" cy="${(8 + p.y).toFixed(1)}" r="4" fill="#ffe14d" opacity="0.55"/>`;
     });
   }
   svg.innerHTML = content;
+}
+
+function renderMatchBoard() {
+  const board = document.getElementById("matchBoard");
+  const grid = document.getElementById("boardGrid");
+  const note = document.getElementById("boardNote");
+  const list = document.getElementById("callList");
+  if (!board || !grid) return;
+  const summary = sessionBoard({
+    events,
+    bounces: window._bounces || [],
+    rallies: window._lastRallies || []
+  });
+  window._board = summary;
+  const cell = (value, label) => `<div class="stat"><div class="val">${value}</div><div class="label">${label}</div></div>`;
+  grid.innerHTML = [
+    cell(summary.rallyCount || "—", "Rallies"),
+    cell(summary.avgRallyShots == null ? "—" : summary.avgRallyShots, "Shots per rally"),
+    cell(summary.bounces || "—", "Bounces seen"),
+    cell(summary.firstServePct == null ? "—" : summary.firstServePct + "%", "First-serve in")
+  ].join("");
+  const bits = [];
+  if (summary.firstServePct == null) bits.push("First-serve percentage stays blank until two serves each have a high-confidence bounce.");
+  if (summary.errors == null) bits.push("Errors are not called. A winner needs the opponent's reply, which this camera cannot see.");
+  else bits.push(`${summary.errors} possible error${summary.errors === 1 ? "" : "s"} from a clearly out bounce. Winners stay blank.`);
+  if ((window._bounces || []).some(b => b.confidence === "low")) bits.push("Gray dots are bounces too close to a line, or from a rough court fit, so they are not a call.");
+  note.textContent = bits.join(" ");
+  const called = (window._bounces || []).filter(b => b.call);
+  list.innerHTML = called.slice(0, 12).map(b => {
+    const m = Math.floor(b.t / 60);
+    const s = Math.floor(b.t % 60).toString().padStart(2, "0");
+    const word = b.confidence === "low" ? "too close to call" : b.call;
+    return `<button type="button" class="call-jump" data-t="${b.t}">${m}:${s} · ${word} · ${b.confidence}</button>`;
+  }).join("");
+  list.querySelectorAll(".call-jump").forEach(btn => {
+    btn.addEventListener("click", () => {
+      video.currentTime = Number(btn.dataset.t);
+      video.pause();
+      drawBallTrail(video.currentTime);
+    });
+  });
+  board.style.display = events.length || (window._bounces || []).length ? "block" : "none";
+}
+
+function refreshCourtReads() {
+  const raw = findBounces(ballTrack, overlay.height || video.videoHeight || 1);
+  if (courtCorners.length === 4) {
+    const H = courtHomography(courtCorners);
+    window._bounces = callBounces(raw, H, courtConfidence || "low");
+  } else {
+    window._bounces = raw.map(b => ({ ...b, call: null, confidence: "low", feet: null }));
+  }
+  window._quiet = quietSpans(events, video.duration || 0);
+  const wrap = document.getElementById("heatmapWrap");
+  if (wrap && (courtCorners.length === 4 || window._bounces.length)) wrap.style.display = "block";
+  renderCourtHeatmap();
+  renderMatchBoard();
+}
+
+function drawBallTrail(upTo) {
+  if (!ballCanvas.width) return;
+  ballCtx.clearRect(0, 0, ballCanvas.width, ballCanvas.height);
+  const pts = ballTrack.filter(p => p.t <= upTo + 0.04);
+  if (pts.length < 2) return;
+  ballCtx.strokeStyle = "rgba(214,239,74,0.9)";
+  ballCtx.lineWidth = 3;
+  ballCtx.lineJoin = "round";
+  ballCtx.beginPath();
+  pts.forEach((p, i) => { if (i) ballCtx.lineTo(p.x, p.y); else ballCtx.moveTo(p.x, p.y); });
+  ballCtx.stroke();
+  const last = pts[pts.length - 1];
+  ballCtx.fillStyle = "#ffe14d";
+  ballCtx.beginPath();
+  ballCtx.arc(last.x, last.y, 7, 0, Math.PI * 2);
+  ballCtx.fill();
+}
+
+function trustedScale() {
+  if (pxPerFoot) return pxPerFoot;
+  if (courtCorners.length === 4 && courtConfidence === "medium") {
+    return scaleFromBaseline(courtCorners, overlay.width, overlay.height);
+  }
+  return null;
 }
 
 // ---------- Comparison (Dashboard) ----------
@@ -2263,12 +2379,62 @@ overlay.addEventListener('click', (e) => {
   if (courtCorners.length < 4) {
     document.getElementById('courtCalibStatus').textContent = `Click ${labels[courtCorners.length - 1]} corner…`;
   } else {
-    document.getElementById('courtCalibStatus').textContent = 'Court calibrated.';
+    document.getElementById('courtCalibStatus').textContent = 'Corners set. Line calls use this fit. Close bounces stay low confidence.';
     courtCalibMode = false;
-    renderCourtHeatmap();
+    courtConfidence = "high";
+    refreshCourtReads();
   }
   updateOverlayPointer();
 });
+document.getElementById("autoCourtBtn").addEventListener("click", () => {
+  const status = document.getElementById("courtCalibStatus");
+  if (!video.videoWidth) {
+    status.textContent = "Load a video and pause on a frame where both baselines are white and clear.";
+    return;
+  }
+  const w = 160;
+  const h = Math.max(2, Math.round(w * video.videoHeight / video.videoWidth));
+  const sample = document.createElement("canvas");
+  sample.width = w;
+  sample.height = h;
+  const context = sample.getContext("2d", { willReadFrequently: true });
+  context.drawImage(video, 0, 0, w, h);
+  const found = detectCourtLines(context.getImageData(0, 0, w, h));
+  if (!found.corners) {
+    status.textContent = `${found.reason || "Lines were not clear"}. Tap four corners: near-left, near-right, far-right, far-left.`;
+    return;
+  }
+  courtCorners = found.corners;
+  courtConfidence = found.confidence || "low";
+  document.getElementById("heatmapWrap").style.display = "block";
+  status.textContent = courtConfidence === "low"
+    ? "A court shape was found, but it is rough. Tap the corners before trusting a call. Speed stays blank."
+    : "Lines found. A bounce within about a foot of a line is not called in or out.";
+  refreshCourtReads();
+});
+
+document.getElementById("shotFilters").addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-shot]");
+  if (chip) {
+    shotFilter = chip.dataset.shot;
+    document.querySelectorAll("#shotFilters [data-shot]").forEach(el => el.classList.toggle("on", el === chip));
+    paintShotList();
+    return;
+  }
+  if (event.target.id === "skipQuietBtn") {
+    skipQuiet = !skipQuiet;
+    event.target.classList.toggle("on", skipQuiet);
+    if (skipQuiet && video.src && video.paused) video.play();
+  }
+});
+
+video.addEventListener("timeupdate", () => {
+  if (!analyzing && ballTrack.length) drawBallTrail(video.currentTime);
+  if (!skipQuiet || video.paused || analyzing) return;
+  const gap = (window._quiet || []).find(g => video.currentTime > g.start + 0.05 && video.currentTime < g.end - 0.08);
+  if (gap) video.currentTime = gap.end;
+});
+
 document.getElementById('playPauseBtn').addEventListener('click', () => {
   if (!video.src) return;
   if (video.paused) video.play();
@@ -2638,6 +2804,8 @@ analyzeBtn.addEventListener('click', async () => {
   analyzing = true;
   events = [];
   ballHistory = [];
+  ballTrack = [];
+  window._bounces = [];
   feedbackList.innerHTML = '';
   try {
     await ensurePoseModel();
@@ -2911,6 +3079,13 @@ async function runSteppedAnalysis() {
     const ball = detectBall(video);
     let ballMph = null;
     if (ball) {
+      ballTrack.push({
+        t,
+        x: ball.x,
+        y: ball.y,
+        nx: ball.x / overlay.width,
+        ny: ball.y / overlay.height
+      });
       ballHistory.push({ time: t, x: ball.x, y: ball.y });
       if (ballHistory.length > 8) ballHistory.shift();
       if (ballHistory.length >= 2) {
@@ -2977,6 +3152,11 @@ async function runSteppedAnalysis() {
   Object.keys(shotCounts).forEach(k => delete shotCounts[k]);
   speeds.length = 0;
   commitStrokes(poseSamples, speeds, shotCounts);
+  const scale = trustedScale();
+  const diag = Math.hypot(overlay.width || 1, overlay.height || 1);
+  events.forEach(e => { e.speedEst = ballSpeedMph(ballTrack, e.time, scale, diag); });
+  speeds.length = 0;
+  events.forEach(e => { if (e.speedEst != null) speeds.push(e.speedEst); });
   const featured = events.find(e => e.type === 'Serve / Overhead') || events[0];
   if (featured) await seekVideo(featured.time);
   finishAnalysis(speeds, shotCounts, motionSamples);
@@ -2994,11 +3174,16 @@ async function runSteppedAnalysis() {
   }
   analysisStatus.textContent = status;
   window.__tcTiming.analyzeMs = Math.round(performance.now() - window.__tcTiming.analyzeStarted);
+  refreshCourtReads();
+  const filters = document.getElementById("shotFilters");
+  if (filters) filters.hidden = events.length === 0;
+  paintShotList();
 }
 
 function paintShotList() {
   feedbackList.innerHTML = "";
-  events.forEach(e => {
+  const shown = shotFilter === "all" ? events : events.filter(e => e.type === shotFilter);
+  shown.forEach(e => {
     const li = document.createElement("li");
     const m = Math.floor(e.time / 60);
     const s = Math.floor(e.time % 60).toString().padStart(2, "0");
@@ -3076,6 +3261,7 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
 
   track('video_analyzed', { shots: events.length, top: speeds.length ? Math.round(Math.max(...speeds)) : 0, sessionType });
 
+  refreshCourtReads();
   saveSessionToSupabase({
     shotCount: events.length,
     avgSpeed: speeds.length ? Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length) : 0,
@@ -3199,18 +3385,75 @@ startRecordBtn.addEventListener('click', () => {
     recordStatus.textContent = '';
   };
   mediaRecorder.start();
+  startLiveCues();
   startRecordBtn.style.display = 'none';
   stopRecordBtn.style.display = 'inline-block';
   recordStatus.textContent = '● Recording...';
 });
 
 stopRecordBtn.addEventListener('click', () => {
+  stopLiveCues();
   if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   startRecordBtn.style.display = 'inline-block';
   stopRecordBtn.style.display = 'none';
 });
 
+let liveTimer = null;
+let livePrev = null;
+let liveShots = 0;
+function stopLiveCues() {
+  clearInterval(liveTimer);
+  liveTimer = null;
+}
+function startLiveCues() {
+  stopLiveCues();
+  livePrev = null;
+  liveShots = 0;
+  const count = document.getElementById("liveCount");
+  const cue = document.getElementById("liveCue");
+  if (count) count.textContent = "0";
+  ensurePoseModel().then(() => {
+    if (cue) cue.textContent = "Watching the player. The count only moves on a full swing.";
+  }).catch(() => {
+    if (cue) cue.textContent = "Recording still works. Pose cues need the model, and it did not load.";
+  });
+  liveTimer = setInterval(() => {
+    if (!poseLandmarker || !recordPreview.videoWidth) return;
+    const vw = recordPreview.videoWidth;
+    const vh = recordPreview.videoHeight;
+    const scale = 256 / Math.max(vw, vh);
+    const w = Math.max(2, Math.round(vw * scale));
+    const h = Math.max(2, Math.round(vh * scale));
+    poseSample.width = w;
+    poseSample.height = h;
+    poseSampleCtx.drawImage(recordPreview, 0, 0, w, h);
+    let result = null;
+    try { result = poseLandmarker.detect(poseSample); }
+    catch (err) { return; }
+    const lm = result && result.landmarks && result.landmarks[0];
+    if (!lm || !lm[12] || !lm[16] || !lm[24]) return;
+    const righty = currentHandedness() !== "left";
+    const wrist = righty ? lm[16] : lm[15];
+    const shoulder = righty ? lm[12] : lm[11];
+    const hip = righty ? lm[24] : lm[23];
+    const tick = liveStrokeTick(livePrev, {
+      t: performance.now() / 1000,
+      wristX: wrist.x,
+      wristY: wrist.y,
+      shoulderY: shoulder.y,
+      torso: Math.hypot(shoulder.x - hip.x, shoulder.y - hip.y) || 0.05
+    });
+    livePrev = tick.prev;
+    if (tick.shot) {
+      liveShots += 1;
+      if (count) count.textContent = String(liveShots);
+    }
+    if (tick.cue && cue) cue.textContent = tick.cue;
+  }, 480);
+}
+
 cancelRecordBtn.addEventListener('click', () => {
+  stopLiveCues();
   if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
   mediaStream = null;
