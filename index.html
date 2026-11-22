@@ -3,331 +3,118 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Tennis Coach — free AI-powered tennis coaching</title>
-<meta name="description" content="Upload your tennis footage, get instant AI coaching feedback, shot classification, speed tracking, and progress dashboard. 100% free, runs in your browser.">
+<title>AI Tennis Coach — free coaching in your browser</title>
+<meta name="description" content="Film a rally and get shot-by-shot tennis coaching in your browser. Ball speed, technique cues, drills, and progress stay on your device. Free.">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0d1b0f">
+<meta name="theme-color" content="#07110c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Tennis Coach">
 <link rel="apple-touch-icon" href="logo-180.png">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%230d1b0f'/%3E%3Ccircle cx='50' cy='50' r='38' fill='%23c4e538'/%3E%3Cpath d='M14 50 C 30 25, 70 25, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3Cpath d='M14 50 C 30 75, 70 75, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3C/svg%3E">
-<style>
-  :root {
-    --green: #1e5631;
-    --lime: #c4e538;
-    --dark: #0d1b0f;
-    --card: #16241a;
-    --text: #eef5e9;
-    --muted: #9bb09f;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--dark);
-    color: var(--text);
-    position: relative;
-    overflow-x: hidden;
-  }
-  #rippleBg {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 0;
-    pointer-events: none;
-  }
-  main, header, footer { position: relative; z-index: 1; }
-  .container { max-width: 960px; margin: 0 auto; padding: 20px; }
-  .hero {
-    text-align: center;
-    padding: 80px 20px 60px;
-  }
-  .app-logo {
-    width: 80px;
-    height: 80px;
-    margin-bottom: 20px;
-  }
-  h1 {
-    font-size: 3rem;
-    margin: 0 0 16px;
-    letter-spacing: -1.5px;
-    line-height: 1.1;
-  }
-  h1 .accent { color: var(--lime); }
-  .tagline {
-    font-size: 1.25rem;
-    color: var(--muted);
-    max-width: 620px;
-    margin: 0 auto 32px;
-    line-height: 1.5;
-  }
-  .cta-btn {
-    display: inline-block;
-    background: var(--lime);
-    color: #15260f;
-    font-weight: 700;
-    padding: 16px 36px;
-    border-radius: 10px;
-    text-decoration: none;
-    font-size: 1.1rem;
-    border: none;
-    cursor: pointer;
-    transition: transform 0.15s;
-  }
-  .cta-btn:hover { transform: translateY(-2px); }
-  .cta-note {
-    margin-top: 12px;
-    color: var(--muted);
-    font-size: 0.85rem;
-  }
-  .section {
-    padding: 60px 20px;
-    max-width: 960px;
-    margin: 0 auto;
-  }
-  .section-title {
-    text-align: center;
-    font-size: 2rem;
-    margin: 0 0 40px;
-    letter-spacing: -0.5px;
-  }
-  .features {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 20px;
-  }
-  .feature {
-    background: rgba(22, 36, 26, 0.82);
-    backdrop-filter: blur(6px);
-    border: 1px solid #223a26;
-    border-radius: 14px;
-    padding: 24px;
-  }
-  .feature .icon {
-    font-size: 1.8rem;
-    margin-bottom: 10px;
-  }
-  .feature h3 {
-    margin: 0 0 8px;
-    font-size: 1.1rem;
-    color: var(--lime);
-  }
-  .feature p {
-    margin: 0;
-    color: var(--muted);
-    font-size: 0.92rem;
-    line-height: 1.5;
-  }
-  .steps {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 24px;
-  }
-  .step {
-    text-align: center;
-  }
-  .step-num {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    background: var(--lime);
-    color: #15260f;
-    border-radius: 50%;
-    font-weight: 700;
-    font-size: 1.2rem;
-    margin-bottom: 12px;
-  }
-  .step h4 {
-    margin: 0 0 6px;
-    font-size: 1rem;
-  }
-  .step p {
-    color: var(--muted);
-    font-size: 0.88rem;
-    margin: 0;
-    line-height: 1.5;
-  }
-  .bottom-cta {
-    background: rgba(22, 36, 26, 0.82);
-    backdrop-filter: blur(6px);
-    border: 1px solid var(--lime);
-    border-radius: 18px;
-    padding: 48px 30px;
-    text-align: center;
-    margin: 40px 20px 60px;
-    max-width: 720px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  .bottom-cta h2 {
-    margin: 0 0 12px;
-    font-size: 1.7rem;
-  }
-  .bottom-cta p {
-    color: var(--muted);
-    margin: 0 0 24px;
-  }
-  footer {
-    text-align: center;
-    color: var(--muted);
-    font-size: 0.78rem;
-    padding: 30px 20px 60px;
-  }
-  @media (max-width: 600px) {
-    h1 { font-size: 2.1rem; }
-    .hero { padding: 50px 20px 40px; }
-    .section-title { font-size: 1.5rem; }
-  }
-</style>
+<link rel="icon" href="logo-192.png" type="image/png">
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
-
+<a class="skip" href="#content">Skip to content</a>
 <canvas id="rippleBg"></canvas>
 
-<div style="position:absolute; top:16px; right:20px; z-index:2;">
-  <a href="app.html" style="color: var(--muted); text-decoration:none; font-size:0.88rem; padding:6px 12px; border:1px solid #223a26; border-radius:8px;">Sign in →</a>
-</div>
+<header class="topbar">
+  <a class="brand" href="index.html">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="46" fill="#0d1b0f" stroke="#d6ef4a" stroke-width="3"/>
+      <circle cx="50" cy="50" r="34" fill="#d6ef4a"/>
+      <path d="M18 50 C 32 28, 68 28, 82 50" stroke="#14301c" stroke-width="4" fill="none"/>
+      <path d="M18 50 C 32 72, 68 72, 82 50" stroke="#14301c" stroke-width="4" fill="none"/>
+    </svg>
+    AI Tennis Coach
+  </a>
+  <a class="top-link" href="app.html">Open the coach</a>
+</header>
 
-<script>
-// Ripple background — same as the app
-(function() {
-  const canvas = document.getElementById('rippleBg');
-  const c = canvas.getContext('2d');
-  let ripples = [];
-  let w, h;
-  function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
-  window.addEventListener('resize', resize); resize();
-  function spawnRipple() {
-    ripples.push({
-      x: Math.random() * w, y: Math.random() * h, r: 0,
-      maxR: 140 + Math.random() * 220, speed: 0.4 + Math.random() * 0.5,
-      alpha: 0.16 + Math.random() * 0.1,
-      hue: Math.random() > 0.5 ? 'lime' : 'green'
-    });
-  }
-  for (let i = 0; i < 6; i++) {
-    ripples.push({
-      x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight,
-      r: Math.random() * 200, maxR: 140 + Math.random() * 220,
-      speed: 0.4 + Math.random() * 0.5,
-      alpha: 0.16 + Math.random() * 0.1,
-      hue: Math.random() > 0.5 ? 'lime' : 'green'
-    });
-  }
-  let frame = 0;
-  function loop() {
-    frame++;
-    c.clearRect(0, 0, w, h);
-    const grad = c.createRadialGradient(w*0.5, h*0.3, 0, w*0.5, h*0.3, Math.max(w,h)*0.8);
-    grad.addColorStop(0, 'rgba(30, 86, 49, 0.12)');
-    grad.addColorStop(1, 'rgba(13, 27, 15, 0)');
-    c.fillStyle = grad; c.fillRect(0, 0, w, h);
-    ripples.forEach(rp => {
-      rp.r += rp.speed;
-      const progress = rp.r / rp.maxR;
-      const fade = Math.max(0, 1 - progress);
-      const color = rp.hue === 'lime' ? `196, 229, 56` : `30, 86, 49`;
-      c.beginPath(); c.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
-      c.strokeStyle = `rgba(${color}, ${rp.alpha * fade})`;
-      c.lineWidth = 1.4; c.stroke();
-    });
-    ripples = ripples.filter(rp => rp.r < rp.maxR);
-    if (frame % 70 === 0) spawnRipple();
-    requestAnimationFrame(loop);
-  }
-  loop();
-})();
-</script>
+<main id="content">
+  <section class="hero">
+    <div class="eyebrow">Free · In the browser · On your device</div>
+    <h1>See the shot<br><span class="accent">you actually hit.</span></h1>
+    <p class="tagline">Film from the side, mark one court line, and get a report card for every stroke: type, spin, speed, and one thing to fix. No download. No account required.</p>
+    <div class="cta-row">
+      <a class="cta-btn" href="app.html">Start coaching</a>
+      <a class="top-link" href="app.html#practice">Browse drills</a>
+    </div>
+    <p class="cta-note">Works on a phone or a laptop. Progress is saved in this browser.</p>
+  </section>
 
-<div class="hero">
-  <svg class="app-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="50" cy="50" r="46" fill="#0d1b0f" stroke="#c4e538" stroke-width="2"/>
-    <circle cx="50" cy="50" r="36" fill="#c4e538"/>
-    <path d="M14 50 C 30 25, 70 25, 86 50" stroke="#1e5631" stroke-width="4" fill="none"/>
-    <path d="M14 50 C 30 75, 70 75, 86 50" stroke="#1e5631" stroke-width="4" fill="none"/>
-  </svg>
-  <h1>Your tennis coach.<br><span class="accent">In your browser.</span></h1>
-  <p class="tagline">
-    Upload a video of yourself playing. Get instant AI feedback on every shot — technique, speed, spin, and personalized drills. No app to download. No subscription. 100% free.
-  </p>
-  <a href="app.html" class="cta-btn">Try it now →</a>
-  <p class="cta-note">No credit card. No signup required to try it.</p>
-</div>
-
-<div class="section">
-  <h2 class="section-title">What it does</h2>
-  <div class="features">
-    <div class="feature">
-      <div class="icon">🎯</div>
-      <h3>Shot analysis</h3>
-      <p>Automatically detects forehands, backhands, serves, and volleys — plus spin (topspin, slice, flat).</p>
-    </div>
-    <div class="feature">
-      <div class="icon">⚡</div>
-      <h3>Real ball speed</h3>
-      <p>Tracks your ball frame by frame and gives you real mph, calibrated to your court dimensions.</p>
-    </div>
-    <div class="feature">
-      <div class="icon">🧠</div>
-      <h3>Personal coaching</h3>
-      <p>Biomechanics-based feedback on contact point, elbow extension, rotation, knee bend, and balance.</p>
-    </div>
-    <div class="feature">
-      <div class="icon">📊</div>
-      <h3>Progress dashboard</h3>
-      <p>Track your improvement over weeks, see your report card, unlock badges and streaks as you practice.</p>
-    </div>
-    <div class="feature">
-      <div class="icon">🎾</div>
-      <h3>Court heatmap</h3>
-      <p>See where every shot lands on the court so you can spot patterns in your placement.</p>
-    </div>
-    <div class="feature">
-      <div class="icon">🌍</div>
-      <h3>Community</h3>
-      <p>Share sessions publicly, follow other players, and see who's hitting the fastest shots on the leaderboard.</p>
-    </div>
+  <div class="proof">
+    <div><strong>Pose, not a chatbot</strong><span>MediaPipe tracks your body. Notes come from contact point, extension, rotation, and balance.</span></div>
+    <div><strong>Speed you can trust more</strong><span>Mark a real court line once. Pixel motion becomes miles per hour.</span></div>
+    <div><strong>A plan for the week</strong><span>Repeating faults turn into drills and a seven-day practice card.</span></div>
   </div>
-</div>
 
-<div class="section">
-  <h2 class="section-title">How it works</h2>
-  <div class="steps">
-    <div class="step">
-      <div class="step-num">1</div>
-      <h4>Record or upload</h4>
-      <p>Prop your phone on a tripod, film side-on to the court, and upload a clip — or record straight from your browser.</p>
+  <section class="section">
+    <h2 class="section-title">What you get</h2>
+    <div class="features">
+      <article class="feature">
+        <h3>Shot by shot</h3>
+        <p>Forehand, backhand, serve, and volley, plus a topspin, slice, or flat read when the ball path is clear.</p>
+      </article>
+      <article class="feature">
+        <h3>A report card</h3>
+        <p>Average pace, consistency, and a letter for each stroke. Jump back to the frame that produced the note.</p>
+      </article>
+      <article class="feature">
+        <h3>Where you stood</h3>
+        <p>A contact map of the rally. Mark the four corners of the court if you want it lined up with the lines.</p>
+      </article>
+      <article class="feature">
+        <h3>Drills that match</h3>
+        <p>A short technique book and six drills. Check one off and it counts toward the streak on this device.</p>
+      </article>
+      <article class="feature">
+        <h3>Progress without an account</h3>
+        <p>Sessions, badges, and the weekly plan live in local storage. Sign in only if you want cloud sync.</p>
+      </article>
+      <article class="feature">
+        <h3>A court you can share</h3>
+        <p>When the cloud is up, publish a session, follow players, and opt in to a speed leaderboard.</p>
+      </article>
     </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <h4>Calibrate the court</h4>
-      <p>Click two ends of a court line so the app can convert pixel motion into real speed.</p>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <h4>Hit analyze</h4>
-      <p>Watch the AI track your body and the ball frame by frame, then give you a full breakdown of every shot.</p>
-    </div>
-    <div class="step">
-      <div class="step-num">4</div>
-      <h4>Improve</h4>
-      <p>Review your report card, follow the personalized drills, and track your progress over time.</p>
-    </div>
-  </div>
-</div>
+  </section>
 
-<div class="bottom-cta">
-  <h2>Ready to see your tennis game like never before?</h2>
-  <p>It's free. It runs in your browser. It takes 30 seconds to try.</p>
-  <a href="app.html" class="cta-btn">Get started →</a>
-</div>
+  <section class="section">
+    <h2 class="section-title">How a session goes</h2>
+    <div class="steps">
+      <article class="step">
+        <div class="step-num">1</div>
+        <h3>Film side-on</h3>
+        <p>Phone on a fence or tripod, full body in frame, one court line visible. Short rallies beat full matches.</p>
+      </article>
+      <article class="step">
+        <div class="step-num">2</div>
+        <h3>Mark the line</h3>
+        <p>Pick a known distance — baseline, singles width, service box — and click both ends on a paused frame.</p>
+      </article>
+      <article class="step">
+        <div class="step-num">3</div>
+        <h3>Analyze</h3>
+        <p>The pose skeleton and ball trail run in the browser. Nothing is uploaded unless you later choose to save it.</p>
+      </article>
+      <article class="step">
+        <div class="step-num">4</div>
+        <h3>Practice the cue</h3>
+        <p>Take the one focus line into the drill tab. Come back and film the same angle to see if it moved.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="bottom-cta">
+    <h2>Ten minutes of footage is enough.</h2>
+    <p>Or open a sample rally first and see the report card before you set up a camera.</p>
+    <a class="cta-btn" href="app.html">Get started</a>
+  </section>
+</main>
 
 <footer>
-  AI Tennis Coach — 100% free, runs in your browser, no data leaves your device except session summaries you choose to save.
+  AI Tennis Coach. Analysis runs on your device. Accounts and the community feed use an optional cloud sync.
 </footer>
-
+<script src="bg.js"></script>
+<script src="pwa.js"></script>
 </body>
 </html>
