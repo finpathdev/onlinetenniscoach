@@ -486,6 +486,262 @@ export function mapToCourt(u, v, corners, W, H) {
   return { x: s * W, y: t * H };
 }
 
+function solveLinear(matrix, vector) {
+  const n = vector.length;
+  const rows = matrix.map((row, i) => [...row, vector[i]]);
+  for (let col = 0; col < n; col++) {
+    let pivot = col;
+    for (let r = col + 1; r < n; r++) {
+      if (Math.abs(rows[r][col]) > Math.abs(rows[pivot][col])) pivot = r;
+    }
+    if (Math.abs(rows[pivot][col]) < 1e-10) return null;
+    const swap = rows[col];
+    rows[col] = rows[pivot];
+    rows[pivot] = swap;
+    const div = rows[col][col];
+    for (let c = col; c <= n; c++) rows[col][c] /= div;
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const factor = rows[r][col];
+      for (let c = col; c <= n; c++) rows[r][c] -= factor * rows[col][c];
+    }
+  }
+  return rows.map(row => row[n]);
+}
+
+export function courtHomography(corners, widthFt = 27, lengthFt = 78) {
+  if (!corners || corners.length !== 4) return null;
+  const dst = [
+    { x: 0, y: 0 },
+    { x: widthFt, y: 0 },
+    { x: widthFt, y: lengthFt },
+    { x: 0, y: lengthFt }
+  ];
+  const A = [];
+  const b = [];
+  corners.forEach((p, i) => {
+    const u = p.x;
+    const v = p.y;
+    const X = dst[i].x;
+    const Y = dst[i].y;
+    A.push([u, v, 1, 0, 0, 0, -u * X, -v * X]);
+    b.push(X);
+    A.push([0, 0, 0, u, v, 1, -u * Y, -v * Y]);
+    b.push(Y);
+  });
+  const h = solveLinear(A, b);
+  if (!h) return null;
+  return [...h, 1];
+}
+
+export function projectToCourt(H, u, v) {
+  if (!H) return null;
+  const w = H[6] * u + H[7] * v + H[8];
+  if (!Number.isFinite(w) || Math.abs(w) < 1e-8) return null;
+  return {
+    x: (H[0] * u + H[1] * v + H[2]) / w,
+    y: (H[3] * u + H[4] * v + H[5]) / w
+  };
+}
+
+export function lineCall(feet, widthFt = 27, lengthFt = 78) {
+  if (!feet || !Number.isFinite(feet.x) || !Number.isFinite(feet.y)) return null;
+  const dx = feet.x < 0 ? -feet.x : feet.x > widthFt ? feet.x - widthFt : 0;
+  const dy = feet.y < 0 ? -feet.y : feet.y > lengthFt ? feet.y - lengthFt : 0;
+  const outside = Math.hypot(dx, dy);
+  const inside = Math.min(feet.x, widthFt - feet.x, feet.y, lengthFt - feet.y);
+  const band = 1.25;
+  if (outside === 0 && inside >= band) return { call: "in", confidence: "high", distanceFt: inside, close: false };
+  if (outside === 0) return { call: "in", confidence: "low", distanceFt: inside, close: true };
+  if (outside < band) return { call: "out", confidence: "low", distanceFt: outside, close: true };
+  if (outside < 3.5) return { call: "out", confidence: "medium", distanceFt: outside, close: false };
+  return { call: "out", confidence: "high", distanceFt: outside, close: false };
+}
+
+export function findBounces(track, frameHeight = 1) {
+  if (!track || track.length < 5) return [];
+  const points = track.filter(p => Number.isFinite(p.t) && Number.isFinite(p.y)).slice().sort((a, b) => a.t - b.t);
+  const drop = Math.max(1.5, frameHeight * 0.012);
+  const bounces = [];
+  for (let i = 2; i < points.length - 2; i++) {
+    const gapBefore = points[i].t - points[i - 1].t;
+    const gapAfter = points[i + 1].t - points[i].t;
+    if (gapBefore <= 0 || gapAfter <= 0 || gapBefore > 0.35 || gapAfter > 0.35) continue;
+    const y = points[i].y;
+    const before = (points[i - 1].y + points[i - 2].y) / 2;
+    const after = (points[i + 1].y + points[i + 2].y) / 2;
+    if (y < before + drop || y < after + drop) continue;
+    const last = bounces[bounces.length - 1];
+    if (last && points[i].t - last.t < 0.4) continue;
+    bounces.push({ t: points[i].t, x: points[i].x, y: points[i].y, nx: points[i].nx, ny: points[i].ny });
+  }
+  return bounces;
+}
+
+export function ballSpeedMph(track, time, pxPerFoot, frameDiag = 1000) {
+  if (!pxPerFoot || pxPerFoot < 2) return null;
+  const window = (track || []).filter(p => Math.abs(p.t - time) <= 0.18).slice().sort((a, b) => a.t - b.t);
+  if (window.length < 3) return null;
+  let best = 0;
+  let samples = 0;
+  for (let i = 1; i < window.length; i++) {
+    const dt = window[i].t - window[i - 1].t;
+    if (dt < 0.03 || dt > 0.22) continue;
+    const dist = Math.hypot(window[i].x - window[i - 1].x, window[i].y - window[i - 1].y);
+    if (dist > frameDiag * 0.22) return null;
+    const mph = (dist / dt / pxPerFoot) * 0.681818;
+    if (mph > best) best = mph;
+    samples += 1;
+  }
+  if (samples < 2 || best < 20 || best > 140) return null;
+  return Math.round(best);
+}
+
+export function scaleFromBaseline(corners, videoWidth, videoHeight, widthFt = 27) {
+  if (!corners || corners.length < 2 || !videoWidth || !videoHeight) return null;
+  const a = corners[0];
+  const b = corners[1];
+  const px = Math.hypot((b.x - a.x) * videoWidth, (b.y - a.y) * videoHeight);
+  if (px < 24) return null;
+  return px / widthFt;
+}
+
+export function callBounces(bounces, H, calibration = "high", widthFt = 27, lengthFt = 78) {
+  return (bounces || []).map(bounce => {
+    const nx = bounce.nx != null ? bounce.nx : bounce.x;
+    const ny = bounce.ny != null ? bounce.ny : bounce.y;
+    const feet = projectToCourt(H, nx, ny);
+    const judged = lineCall(feet, widthFt, lengthFt);
+    if (!judged) return { ...bounce, call: null, confidence: "low", feet: null };
+    let confidence = judged.confidence;
+    if (calibration !== "high" && confidence === "high") confidence = "medium";
+    if (calibration === "low") confidence = "low";
+    return { ...bounce, feet, call: judged.call, confidence, distanceFt: judged.distanceFt, close: judged.close };
+  });
+}
+
+export function sessionBoard({ events = [], bounces = [], rallies = [] } = {}) {
+  const lengths = rallies.map(r => (r.shots || []).length).filter(n => n > 0);
+  const serveCalls = [];
+  events.filter(e => /serve/i.test(e.type || "")).forEach(shot => {
+    const bounce = bounces.find(b => b.t > shot.time && b.t - shot.time < 1.6 && b.confidence === "high" && (b.call === "in" || b.call === "out"));
+    if (bounce) serveCalls.push(bounce.call);
+  });
+  const firstServePct = serveCalls.length >= 2
+    ? Math.round(100 * serveCalls.filter(c => c === "in").length / serveCalls.length)
+    : null;
+  let errors = null;
+  const outs = bounces.filter(b => b.call === "out" && b.confidence === "high");
+  if (outs.length && events.length) {
+    errors = outs.filter(bounce => {
+      const shot = [...events].reverse().find(e => e.time < bounce.t && bounce.t - e.time < 1.5);
+      if (!shot) return false;
+      return !events.some(e => e.time > shot.time && e.time < bounce.t);
+    }).length;
+  }
+  return {
+    shots: events.length,
+    rallyCount: rallies.length,
+    avgRallyShots: lengths.length ? Math.round((lengths.reduce((a, b) => a + b, 0) / lengths.length) * 10) / 10 : null,
+    longestRally: lengths.length ? Math.max(...lengths) : 0,
+    bounces: bounces.length,
+    callsIn: bounces.filter(b => b.call === "in").length,
+    callsOut: bounces.filter(b => b.call === "out").length,
+    firstServePct,
+    errors,
+    winners: null
+  };
+}
+
+export function quietSpans(events, duration, minGap = 2.4) {
+  if (!Number.isFinite(duration) || duration <= 0) return [];
+  const marks = [0, ...(events || []).map(e => e.time).filter(t => t > 0 && t < duration).sort((a, b) => a - b), duration];
+  const gaps = [];
+  for (let i = 1; i < marks.length; i++) {
+    if (marks[i] - marks[i - 1] <= minGap) continue;
+    const start = marks[i - 1] + (i === 1 ? 0 : 0.35);
+    const end = marks[i] - (i === marks.length - 1 ? 0 : 0.25);
+    if (end - start > 0.8) gaps.push({ start, end });
+  }
+  return gaps;
+}
+
+export function detectCourtLines(image) {
+  const { width, height, data } = image || {};
+  if (!width || !height || !data) return { corners: null, confidence: "low", reason: "no frame" };
+  const white = new Uint8Array(width * height);
+  let count = 0;
+  for (let p = 0, i = 0; p < white.length; p++, i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    if (min > 168 && max - min < 42) {
+      white[p] = 1;
+      count += 1;
+    }
+  }
+  if (count < width * 0.35) return { corners: null, confidence: "low", reason: "not enough white line pixels" };
+  const rows = new Array(height).fill(0);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) rows[y] += white[y * width + x];
+  }
+  const peak = (y0, y1) => {
+    let best = -1;
+    let at = -1;
+    for (let y = y0; y < y1; y++) {
+      if (rows[y] > best) {
+        best = rows[y];
+        at = y;
+      }
+    }
+    if (best < width * 0.15 || at < 0) return null;
+    let left = 0;
+    let right = width - 1;
+    const row = at * width;
+    while (left < width && !white[row + left]) left += 1;
+    while (right > left && !white[row + right]) right -= 1;
+    if (right - left < width * 0.22) return null;
+    return { y: at, left, right, score: best };
+  };
+  const near = peak(Math.floor(height * 0.5), height);
+  const far = peak(Math.floor(height * 0.05), Math.floor(height * 0.48));
+  if (!near || !far || far.y >= near.y - 3) {
+    return { corners: null, confidence: "low", reason: "the two baselines were not clear" };
+  }
+  const confidence = near.score > width * 0.28 && far.score > width * 0.18 ? "medium" : "low";
+  return {
+    corners: [
+      { x: near.left / width, y: near.y / height },
+      { x: near.right / width, y: near.y / height },
+      { x: far.right / width, y: far.y / height },
+      { x: far.left / width, y: far.y / height }
+    ],
+    confidence,
+    reason: null
+  };
+}
+
+export function liveStrokeTick(prev, sample) {
+  if (!sample) return { shot: false, cue: "", prev };
+  if (!prev) return { shot: false, cue: "", prev: sample };
+  const dt = sample.t - prev.t;
+  if (!(dt > 0) || dt > 0.8) return { shot: false, cue: "", prev: sample };
+  const torso = sample.torso || 0.05;
+  const speed = Math.hypot(sample.wristX - prev.wristX, sample.wristY - prev.wristY) / dt;
+  const since = sample.t - (prev.lastShot || -10);
+  const shot = speed / torso > 3.2 && speed > 0.4 && since > 0.75;
+  let cue = "";
+  if (sample.wristY < sample.shoulderY - torso * 0.45) cue = "Racket hand is up. Reach through a serve instead of stopping short.";
+  else if (shot) cue = "Swing spotted. Finish the stroke before you look up.";
+  return {
+    shot,
+    cue,
+    prev: { ...sample, lastShot: shot ? sample.t : (prev.lastShot || 0) }
+  };
+}
+
 export function buildSampleSession(now = new Date()) {
   const events = [
     { time: 1.4, type: "Forehand", speedEst: 62, spin: "topspin", note: "solid contact point out in front of the body", ballX: 0.66, ballY: 0.72 },

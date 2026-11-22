@@ -1,6 +1,6 @@
-# AI Tennis Coach
+# LimeCourt
 
-A free tennis coach that runs as a static site. Film a rally, mark one court line, and get a shot-by-shot report: stroke type, a spin read, speed in mph, and one thing to fix. Drills, a weekly plan, and your history stay in the browser. An account is optional.
+A free tennis coach that runs as a static site. Film a rally, mark the court, and get a shot list, a ball trail, and technique notes. Speed and in/out calls appear only when the track and the calibration are good enough. Drills, a weekly plan, and your history stay in the browser. An account is optional.
 
 Live: [finpathdev.github.io/onlinetenniscoach](https://finpathdev.github.io/onlinetenniscoach/)
 
@@ -40,7 +40,7 @@ Left-handed classification uses the racket hand from onboarding or Profile.
 
 ## Install and offline
 
-The site is a progressive web app. `manifest.json` starts at `app.html`, and `sw.js` caches the shell under `tennis-coach-v2`.
+The site is a progressive web app. `manifest.json` starts at `app.html`, and `sw.js` caches the shell under `tennis-coach-v4`.
 
 - HTML, CSS, and JavaScript are **network-first**, then written into the cache, so a refresh picks up a new deploy. The cache is the offline fallback.
 - Older caches are deleted when the service worker activates.
@@ -68,7 +68,7 @@ The Supabase project `onlinetenniscoach` was paused when this work started. It w
 | `theme.css` | Shared visual system. Outfit is self-hosted in `fonts/` |
 | `bg.js` | Court, mesh, and tennis-ball background |
 | `pwa.js` | Service worker registration, update prompt, offline note |
-| `sw.js` | App-shell cache (`tennis-coach-v2`) |
+| `sw.js` | App-shell cache (`tennis-coach-v4`) |
 | `manifest.json` | Install metadata. Scope is the project folder, so GitHub Pages project sites work |
 | `coach.test.mjs` | Unit tests for calibration distances, shot rules, rallies, and the week plan |
 
@@ -88,7 +88,9 @@ node coach.test.mjs
 
 ## Limits
 
-- Ball tracking is a color and motion heuristic, not a trained detector.
+- Ball tracking is a color and motion heuristic, not a trained detector. The trail and bounce marks follow that track.
+- Line calls need four court corners, tapped or found from clear white lines. A bounce within about a foot of a line, or a rough automatic fit, is shown and not called in or out. First-serve percentage needs two high-confidence serve bounces. Winners are not inferred.
+- Live recording can count swings while the pose model is running. It does not call lines in real time.
 - iPhone HEVC (H.265) is refused in browsers that cannot decode it, with a message to export H.264. Portrait clips are sized to the picture, up to 70% of the screen height.
 - A screen recording (black bars, a player UI, a tiny player) is called out. Technique notes stay low-confidence instead of inventing a contact or elbow fault. Film the court directly, from the side, if you want a real grade.
 - Pose feedback is a set of geometric checks. It will miss things a coach would see, and it can flag a good shot.
