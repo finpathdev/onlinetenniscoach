@@ -89,6 +89,8 @@ node coach.test.mjs
 ## Limits
 
 - Ball tracking is a color and motion heuristic, not a trained detector.
+- iPhone HEVC (H.265) is refused in browsers that cannot decode it, with a message to export H.264. Portrait clips are sized to the picture, up to 70% of the screen height.
+- A screen recording (black bars, a player UI, a tiny player) is called out. Technique notes stay low-confidence instead of inventing a contact or elbow fault. Film the court directly, from the side, if you want a real grade.
 - Pose feedback is a set of geometric checks. It will miss things a coach would see, and it can flag a good shot.
 - Community features depend on the Supabase project being awake and on its row level security.
 - Match records older than three months are removed. Practice sessions are kept.

@@ -5,6 +5,8 @@ import {
   DRILLS,
   classifyShot,
   generateFeedback,
+  noteForShot,
+  cameraView,
   gradeSpeed,
   calcConsistency,
   segmentRallies,
@@ -58,7 +60,7 @@ assert.equal(serve, "Serve / Overhead");
 
 const landmarks = {
   wrist: { x: 0.62, y: 0.45 },
-  elbow: { x: 0.55, y: 0.5 },
+  elbow: { x: 0.55, y: 0.425 },
   shoulder: { x: 0.48, y: 0.4 },
   offShoulder: { x: 0.4, y: 0.4 },
   hip: { x: 0.5, y: 0.62 },
@@ -68,7 +70,39 @@ const landmarks = {
   nose: { x: 0.46, y: 0.2 }
 };
 const backhand = generateFeedback("Backhand", landmarks, "intermediate");
-assert.equal(backhand.includes("follow-through"), false, "a decent backhand should not always be flagged");
+assert.equal(backhand.includes("follow-through"), false, "an extended backhand should not be told to finish");
+
+const cropped = generateFeedback("Serve / Overhead", {
+  ...landmarks,
+  wrist: { x: 0.5, y: 0.15 },
+  elbow: { x: 0.5, y: 0.28 },
+  shoulder: { x: 0.48, y: 0.4 },
+  frontKnee: { x: 0.5, y: 0.7, visibility: 0.1 },
+  frontAnkle: { x: 0.5, y: 0.9, visibility: 0.1 }
+}, "intermediate");
+assert.equal(cropped.toLowerCase().includes("straight"), false, "hidden legs must not be called straight");
+assert.equal(cropped.toLowerCase().includes("above"), true);
+
+const bigServe = classifyShot({ x: 0.5, y: 0.2 }, { x: 0.5, y: 0.45 }, { x: 0.5, y: 0.7 }, 0, 4, "right");
+const smallServe = classifyShot({ x: 0.5, y: 0.42 }, { x: 0.5, y: 0.47 }, { x: 0.5, y: 0.52 }, 0, 1, "right");
+assert.equal(bigServe, "Serve / Overhead");
+assert.equal(smallServe, "Serve / Overhead");
+
+const behindForehand = {
+  wrist: { x: 0.62, y: 0.42 },
+  elbow: { x: 0.58, y: 0.48 },
+  shoulder: { x: 0.55, y: 0.5, z: 0 },
+  offShoulder: { x: 0.45, y: 0.5, z: 0 },
+  hip: { x: 0.54, y: 0.62, z: 0 },
+  offHip: { x: 0.46, y: 0.62, z: 0 },
+  frontKnee: { x: 0.52, y: 0.75, visibility: 0.2 },
+  frontAnkle: { x: 0.5, y: 0.9, visibility: 0.2 },
+  nose: { x: 0.5, y: 0.42, z: 0.2 }
+};
+assert.equal(cameraView(behindForehand), "behind");
+const behindNote = noteForShot("Forehand", behindForehand, "intermediate");
+assert.equal(/cramped|late|fault is the elbow|elbow is still bent/i.test(behindNote), false, behindNote);
+assert.equal(behindNote.toLowerCase().includes("forehand") || behindNote.toLowerCase().includes("net") || behindNote.toLowerCase().includes("confidence"), true);
 
 const cramped = generateFeedback("Backhand", {
   ...landmarks,
@@ -119,7 +153,7 @@ assert.ok(mapped.y >= 0 && mapped.y <= 200);
 const issues = tallyIssues([
   { note: "contact looks late and close to the body" },
   { note: "contact looks late and close to the body" },
-  { note: "try contacting the ball higher, at full reach" }
+  { note: "contact looks low for a serve — toss higher and reach up so the hand is above your head" }
 ]);
 assert.equal(issues.late_contact, 2);
 assert.equal(issues.serve_extension >= 1, true);

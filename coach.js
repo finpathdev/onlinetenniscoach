@@ -171,56 +171,154 @@ export function angleAt(a, b, c) {
   return Math.acos(cos) * (180 / Math.PI);
 }
 
-export function classifyShot(wrist, shoulder, hip, dx, dy, handedness = "right") {
-  const aboveShoulder = wrist.y < shoulder.y;
-  const movingUp = dy < 0;
-  if (aboveShoulder && movingUp) return "Serve / Overhead";
-  const forehandDx = handedness === "left" ? dx < 0 : dx > 0;
-  const backhandDx = handedness === "left" ? dx > 0 : dx < 0;
-  if (forehandDx && Math.abs(wrist.x - hip.x) > 0.05) return "Forehand";
-  if (backhandDx) return "Backhand";
-  return "Volley";
+function seen(point) {
+  return !!point && (point.visibility == null || point.visibility >= 0.45);
+}
+
+function torsoLength(shoulder, hip) {
+  return Math.hypot(shoulder.x - hip.x, shoulder.y - hip.y) || 0.001;
+}
+
+export function cameraView(lm) {
+  const torso = torsoLength(lm.shoulder, lm.hip);
+  const off = lm.offShoulder || lm.shoulder;
+  const span = Math.hypot(off.x - lm.shoulder.x, off.y - lm.shoulder.y);
+  if (span < torso * 0.42) return "side";
+  if (lm.nose && lm.nose.z != null && lm.shoulder.z != null && lm.nose.z < lm.shoulder.z - 0.04) return "front";
+  return "behind";
+}
+
+export function readConfidence(torso) {
+  if (torso < 0.07) return "low";
+  if (torso < 0.12) return "limited";
+  return "ok";
+}
+
+export function noteForShot(type, lm, level = "intermediate") {
+  const torso = torsoLength(lm.shoulder, lm.hip);
+  const confidence = readConfidence(torso);
+  if (confidence === "low") {
+    return `Low confidence. This fast motion is best read as a ${type.toLowerCase()}, but the player is too small in the frame to judge contact or elbow bend.`;
+  }
+  let note = generateFeedback(type, lm, level);
+  if (confidence === "limited") {
+    const kept = note.split("; ").filter(part => !/late|cramped|elbow is still bent|looks low|beside the hip|front leg looks straight|legs are out of frame/i.test(part));
+    const base = kept.join("; ") || `Best read: ${type.toLowerCase()}.`;
+    return `${base} Low confidence because the player is small and the camera is behind the baseline.`;
+  }
+  return note;
+}
+
+export function classifyShot(wrist, shoulder, hip, dx, dy, handedness = "right", extra = {}) {
+  const offShoulder = extra.offShoulder || { x: shoulder.x, y: hip.y };
+  const otherWrist = extra.otherWrist;
+  const nose = extra.nose;
+  const torso = torsoLength(shoulder, hip);
+  const aboveBy = (shoulder.y - wrist.y) / torso;
+  // A serve's fast frame has the racket hand clearly above the shoulder.
+  // Moving-up is not required: contact itself is often already traveling down.
+  if (aboveBy > 0.45) return "Serve / Overhead";
+
+  if (otherWrist) {
+    const handGap = Math.hypot(wrist.x - otherWrist.x, wrist.y - otherWrist.y) / torso;
+    if (handGap < 0.45) return "Backhand";
+  }
+
+  const center = (shoulder.x + offShoulder.x) / 2;
+  let forehandOnRight = handedness !== "left";
+  // Smaller z is closer to the camera. A nose in front of the shoulders means
+  // we are looking at the player's front, so image-left is their right.
+  if (nose && nose.z != null && shoulder.z != null && nose.z < shoulder.z - 0.02) {
+    forehandOnRight = !forehandOnRight;
+  }
+  const shoulderSpan = Math.hypot(offShoulder.x - shoulder.x, offShoulder.y - shoulder.y);
+  const sideOn = shoulderSpan < torso * 0.35;
+  if (!sideOn && Math.abs(wrist.x - center) > torso * 0.2) {
+    const onRight = wrist.x > center;
+    return onRight === forehandOnRight ? "Forehand" : "Backhand";
+  }
+  // Side-on, image x is forward/back. The non-dominant hand staying on the racket
+  // was already called a backhand. A single arm swinging through is a forehand
+  // unless the wrist has crossed well past the front hip toward the other shoulder.
+  if (nose) {
+    const facing = Math.sign(nose.x - hip.x) || Math.sign(dx) || 1;
+    const across = (wrist.x - hip.x) * facing < -torso * 0.35;
+    if (across) return "Backhand";
+  }
+  if (Math.abs(dy) < Math.abs(dx) * 0.4 && Math.abs(wrist.y - shoulder.y) < torso * 0.35) return "Volley";
+  return "Forehand";
 }
 
 export function generateFeedback(type, lm, level = "intermediate") {
   const { wrist, elbow, shoulder, offShoulder, hip, offHip, frontKnee, frontAnkle, nose } = lm;
   const issues = [];
   const positives = [];
-  const contactForward = Math.abs(wrist.x - hip.x);
-  const elbowAngle = angleAt(shoulder, elbow, wrist);
-  const shoulderTilt = Math.abs(shoulder.y - offShoulder.y);
-  const hipTilt = Math.abs(hip.y - offHip.y);
-  const rotationGap = Math.abs(shoulderTilt - hipTilt);
-  const kneeAngle = angleAt(hip, frontKnee, frontAnkle);
+  const torso = torsoLength(shoulder, hip);
+  const shoulderSpan = Math.hypot(shoulder.x - offShoulder.x, shoulder.y - offShoulder.y) || torso;
+  const elbowAngle = seen(elbow) && seen(wrist) && seen(shoulder) ? Math.round(angleAt(shoulder, elbow, wrist)) : null;
+  const kneeAngle = seen(frontKnee) && seen(frontAnkle) && seen(hip) ? Math.round(angleAt(hip, frontKnee, frontAnkle)) : null;
+  const aboveBy = (shoulder.y - wrist.y) / torso;
+  const lead = Math.abs(wrist.x - hip.x) / Math.max(shoulderSpan, torso * 0.45);
   const hipMidX = (hip.x + offHip.x) / 2;
-  const headOffset = Math.abs(nose.x - hipMidX);
+  const headOffset = seen(nose) ? Math.abs(nose.x - hipMidX) / Math.max(shoulderSpan, torso * 0.45) : null;
+
+  const view = cameraView({ shoulder, offShoulder, hip, nose });
+  const bigEnough = torso >= 0.12;
 
   if (type === "Serve / Overhead") {
-    const contactHeight = hip.y - wrist.y;
-    if (contactHeight > 0.32) positives.push("good extension on contact");
-    else issues.push("try contacting the ball higher, at full reach, rather than dropping the racket arm early");
-    if (elbowAngle < 140) issues.push("arm looks bent at contact — focus on fully extending up through the ball");
-    if (kneeAngle > 165) issues.push("legs look fairly straight at contact — driving up more from the knees can add power");
+    if (aboveBy > 0.5) {
+      positives.push("contact is up, with the racket hand clearly above the shoulder");
+    } else if (aboveBy < 0.25 && bigEnough && view === "side") {
+      issues.push("contact looks low for a serve — toss higher and reach up so the hand is above your head");
+    } else {
+      positives.push("the racket hand is the highest part of a serving motion");
+    }
+    if (elbowAngle != null && elbowAngle < 105 && bigEnough && view === "side") {
+      issues.push(`elbow is still bent at about ${elbowAngle}° — reach up through the ball instead of dropping the racket early`);
+    } else if (elbowAngle != null && elbowAngle < 165) {
+      positives.push("a little elbow bend at contact is normal, including on a kick serve");
+    }
+    if (view !== "side") {
+      const tilt = Math.abs(shoulder.y - offShoulder.y) / Math.max(shoulderSpan, 0.001);
+      if (tilt > 0.15) positives.push("the shoulders show some tilt in the trophy pose");
+    }
+    if (kneeAngle != null && bigEnough && view === "side" && kneeAngle > 175) issues.push("front leg looks straight — bend and drive up into the toss");
+    else if (kneeAngle != null && kneeAngle < 165) positives.push("the legs are in the motion");
   } else if (type === "Forehand") {
-    if (contactForward > 0.15) positives.push("solid contact point out in front of the body");
-    else issues.push("contact looks late and close to the body — try meeting the ball further out in front");
-    if (rotationGap < 0.02) issues.push("shoulders look fairly square to the net — more hip and shoulder rotation on the backswing can add power");
-    if (elbowAngle < 100) issues.push("arm looks quite cramped through contact — give the swing a bit more room to extend");
-    if (headOffset > 0.12) issues.push("head and upper body drifting off-balance through the shot — try staying centered over your base");
+    if (view === "behind" || view === "front") {
+      const towardNet = (hip.y - wrist.y) / torso;
+      const toForehand = ((wrist.x - hip.x) * (view === "front" ? -1 : 1)) / Math.max(shoulderSpan, torso * 0.4);
+      if (towardNet > 0.1) positives.push("the racket hand is out toward the net, in front of the body");
+      else positives.push("from this far behind the baseline the exact contact point is too small to grade, and a bent elbow on the forehand is not a fault");
+      if (toForehand > 0.08) positives.push("the hand is on the forehand side");
+    } else if (lead > 0.85) {
+      positives.push("contact is out in front of the hip");
+    } else if (bigEnough) {
+      issues.push("contact looks late and close to the body — the racket hand is still beside the hip, so meet the ball further in front");
+    }
+    if (view === "side" && shoulderSpan > torso * 0.5) {
+      const tilt = Math.abs(shoulder.y - offShoulder.y) / shoulderSpan;
+      if (tilt < 0.12 && bigEnough) issues.push("shoulders look level to the net — turn the front shoulder in before you swing");
+    }
+    if (headOffset != null && headOffset > 1.1 && bigEnough && view === "side") issues.push("head is drifting off-balance past the front hip — stay centered over your feet");
   } else if (type === "Backhand") {
-    if (contactForward > 0.12) positives.push("good contact point ahead of the body");
-    else issues.push("contact point looks a little late — try preparing the racket earlier");
-    if (kneeAngle > 170) issues.push("front leg looks quite straight — a little more knee bend can help with balance and power");
-    if (elbowAngle < 145) issues.push("follow-through looks short — finish high and extended, not cut off");
+    if (lead > 0.7) positives.push("contact is ahead of the hip");
+    else issues.push("contact looks late — prepare the racket as the ball crosses the net, not after the bounce");
+    if (kneeAngle != null && kneeAngle > 172) issues.push("front leg looks straight — a little knee bend keeps you balanced");
+    if (elbowAngle != null && elbowAngle < 100) issues.push(`follow-through looks short, elbow still around ${elbowAngle}° — finish high and extended`);
   } else {
-    if (elbowAngle < 130) positives.push("compact, controlled swing — good for a volley");
-    else issues.push("swing looks a bit long for a volley — try a shorter, punchier motion");
-    if (headOffset > 0.1) issues.push("try keeping your head and balance steadier through contact");
+    if (elbowAngle != null && elbowAngle < 140) positives.push(`compact swing, elbow about ${elbowAngle}° — that is the right length for a volley`);
+    else issues.push("swing looks long for a volley — shorten it to a punch and step forward");
+    if (headOffset != null && headOffset > 1) issues.push("head is drifting off-balance — keep it still through the punch");
   }
 
-  if (positives.length === 0 && issues.length === 0) return "shot looks mechanically solid";
+  if (positives.length === 0 && issues.length === 0) {
+    return seen(frontKnee) ? "the measurable part of this swing looks solid" : "the upper body is in frame; the legs are cut off, so this note only covers the arm";
+  }
   const issueLimit = level === "beginner" ? 1 : 2;
-  return [...positives.slice(0, 1), ...issues.slice(0, issueLimit)].join("; ");
+  const line = [...positives.slice(0, 1), ...issues.slice(0, issueLimit)].join("; ");
+  if (!seen(frontKnee) && type !== "Volley" && torso >= 0.12) return line + ". Legs are out of frame, so this is only the arm and contact.";
+  return line;
 }
 
 export function tallyIssues(events) {
@@ -230,7 +328,7 @@ export function tallyIssues(events) {
     if (note.includes("late") || note.includes("close to the body") || note.includes("close")) {
       counts.late_contact = (counts.late_contact || 0) + 1;
     }
-    if (note.includes("higher") || note.includes("extending up") || note.includes("full reach")) {
+    if (note.includes("looks low") || note.includes("toss higher") || note.includes("elbow is still bent")) {
       counts.serve_extension = (counts.serve_extension || 0) + 1;
     }
     if (note.includes("follow-through") || note.includes("punchier") || note.includes("too long")) {
