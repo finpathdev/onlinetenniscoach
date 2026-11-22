@@ -883,6 +883,7 @@ import {
   mapToCourt,
   tallyIssuesFromSessions,
   focusLine,
+  noteForShot,
   suggestedDrillIds,
   buildWeekPlan,
   buildSampleSession,
@@ -1139,7 +1140,8 @@ async function loadSessions() {
         const m = Math.floor(e.time / 60);
         const sec = Math.floor(e.time % 60).toString().padStart(2, '0');
         const spinTag = (e.spin && e.spin !== '—') ? ` <span style="color:var(--muted); font-size:0.78rem;">[${e.spin}]</span>` : '';
-        li.innerHTML = `<span class="time">${m}:${sec}</span><strong>${e.type}</strong>${spinTag} — ~${e.speedEst} mph — ${e.note}`;
+        const pace = e.speedEst == null ? 'speed not measured' : `~${e.speedEst} mph`;
+        li.innerHTML = `<span class="time">${m}:${sec}</span><strong>${e.type}</strong>${spinTag} — ${pace} — ${e.note}`;
         li.querySelector('.time').addEventListener('click', () => { video.currentTime = e.time; video.pause(); });
         feedbackList.appendChild(li);
       });
@@ -1244,7 +1246,8 @@ async function exportSessionAsPDF(session) {
       if (y > 720) { doc.addPage(); y = 60; }
       const m = Math.floor(e.time / 60);
       const s = Math.floor(e.time % 60).toString().padStart(2, '0');
-      const line = `${i+1}. [${m}:${s}] ${e.type} — ${e.speedEst} mph${e.spin && e.spin !== '—' ? ' (' + e.spin + ')' : ''}`;
+      const pace = e.speedEst == null ? 'speed not measured' : `${e.speedEst} mph`;
+      const line = `${i+1}. [${m}:${s}] ${e.type} — ${pace}${e.spin && e.spin !== '—' ? ' (' + e.spin + ')' : ''}`;
       doc.setFont(undefined, 'bold');
       doc.text(line, 50, y);
       y += 14;
@@ -1960,11 +1963,13 @@ async function checkPersonalBests(newEvents) {
     const data = (await getMySessions()).filter(s => !s.sample);
     cachedPBs = {};
     data.forEach(s => (s.events || []).forEach(e => {
+      if (e.speedEst == null) return;
       if (!cachedPBs[e.type] || e.speedEst > cachedPBs[e.type]) cachedPBs[e.type] = e.speedEst;
     }));
   }
   const newBests = {};
   newEvents.forEach(e => {
+    if (e.speedEst == null) return;
     if (!newBests[e.type] || e.speedEst > newBests[e.type]) newBests[e.type] = e.speedEst;
   });
   const broken = [];
@@ -1988,6 +1993,7 @@ async function renderPersonalBests() {
   const bests = {};
   data.forEach(s => {
     (s.events || []).forEach(e => {
+      if (e.speedEst == null) return;
       if (!bests[e.type] || e.speedEst > bests[e.type]) bests[e.type] = e.speedEst;
     });
   });
@@ -2061,6 +2067,7 @@ async function loadLeaderboard() {
   (sessions || []).forEach(s => {
     (s.events || []).forEach(e => {
       if (shot !== 'all' && e.type !== shot) return;
+      if (e.speedEst == null) return;
       if (!bests[s.user_id] || e.speedEst > bests[s.user_id].mph) {
         bests[s.user_id] = { mph: e.speedEst, type: e.type };
       }
@@ -2323,7 +2330,7 @@ resetCalibBtn.addEventListener('click', () => {
 skipCalibBtn.addEventListener('click', () => {
   calibSkipped = true;
   pxPerFoot = null;
-  analysisStatus.textContent = 'Calibration skipped — speeds will be rough relative estimates only.';
+  analysisStatus.textContent = 'Calibration skipped. Stroke notes still run. Ball speed stays blank until you mark a court line.';
   updateOverlayPointer();
 });
 
@@ -2423,8 +2430,40 @@ fileInput.addEventListener('change', () => {
 });
 
 let currentVideoFile = null;
-function loadVideo(file) {
+async function fileLooksLikeHevc(file) {
+  try {
+    const slices = [file.slice(0, 65536)];
+    if (file.size > 65536) slices.push(file.slice(Math.max(0, file.size - 262144)));
+    const parts = await Promise.all(slices.map(part => part.arrayBuffer()));
+    const decode = (buf) => new TextDecoder("latin1").decode(buf);
+    const head = decode(parts[0]);
+    const ftypAt = head.indexOf("ftyp");
+    const ftyp = ftypAt >= 0 ? head.slice(ftypAt, ftypAt + 32) : "";
+    if (ftyp.includes("avc1") || ftyp.includes("avc3")) return false;
+    if (ftyp.includes("hvc1") || ftyp.includes("hev1")) return true;
+    const tail = parts.slice(1).map(decode).join("\n");
+    return tail.includes("hvc1") || tail.includes("hev1") || tail.includes("hvcC");
+  } catch (err) {
+    return false;
+  }
+}
+
+function browserCanPlayHevc() {
+  const probe = document.createElement("video");
+  return ["hvc1", "hev1"].some(codec => {
+    const support = probe.canPlayType(`video/mp4; codecs="${codec}"`);
+    return support === "probably" || support === "maybe";
+  });
+}
+
+async function loadVideo(file) {
   currentVideoFile = file;
+  window.__tcTiming.filePickedAt = performance.now();
+  if (await fileLooksLikeHevc(file) && !browserCanPlayHevc()) {
+    reviewCard.style.display = "block";
+    analysisStatus.innerHTML = '<div class="error-toast">This is an iPhone HEVC (H.265) video. Chrome on a computer usually cannot play it, so nothing was loaded. In Photos, export a copy as Most Compatible (H.264 MP4) and upload that. The video never leaves this browser.</div>';
+    return;
+  }
   const url = URL.createObjectURL(file);
   video.src = url;
   reviewCard.style.display = 'block';
@@ -2450,14 +2489,23 @@ function loadVideo(file) {
   updateOverlayPointer();
   if (document.getElementById('playerIdBanner')) document.getElementById('playerIdBanner').style.display = 'block';
   if (document.getElementById('playerIdStatus')) document.getElementById('playerIdStatus').textContent = '';
-  video.onloadedmetadata = () => {
+  const fitCanvas = () => {
+    if (!video.videoWidth) return;
     overlay.width = video.videoWidth;
     overlay.height = video.videoHeight;
     ballCanvas.width = video.videoWidth;
     ballCanvas.height = video.videoHeight;
   };
+  video.onloadedmetadata = () => {
+    fitCanvas();
+    if (window.__tcTiming.filePickedAt) {
+      window.__tcTiming.videoReadyMs = Math.round(performance.now() - window.__tcTiming.filePickedAt);
+    }
+  };
+  video.onloadeddata = fitCanvas;
+  if (video.videoWidth) fitCanvas();
   video.onerror = () => {
-    analysisStatus.innerHTML = '<div class="error-toast">⚠️ This video file couldn\'t be loaded. Try MP4 with H.264 codec, or MOV / WebM.</div>';
+    analysisStatus.innerHTML = '<div class="error-toast">This video could not be decoded. iPhone HEVC (H.265) often fails in desktop Chrome. Export an H.264 MP4 (Photos → Most Compatible) and try that. MOV and WebM also work when the browser supports them.</div>';
   };
   reviewCard.scrollIntoView({ behavior: 'smooth' });
 }
@@ -2468,6 +2516,15 @@ resetBtn.addEventListener('click', () => {
   video.pause();
   video.src = '';
 });
+
+window.__tcTiming = { inferMs: 0, inferCount: 0, modelMs: 0, delegate: "", videoReadyMs: 0, analyzeMs: 0 };
+const poseSample = document.createElement("canvas");
+const poseSampleCtx = poseSample.getContext("2d", { willReadFrequently: true });
+let poseClock = 0;
+function nextPoseTimestamp() {
+  poseClock = Math.max(poseClock + 1, Math.round(performance.now()));
+  return poseClock;
+}
 
 async function ensurePoseModel() {
   if (poseLandmarker) return;
@@ -2483,16 +2540,29 @@ async function ensurePoseModel() {
         modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
         delegate
       },
-      runningMode: "VIDEO",
-      numPoses: multiOn ? 2 : 1
+      runningMode: "IMAGE",
+      numPoses: 2
     });
-    try {
-      poseLandmarker = await PoseLandmarker.createFromOptions(vision, options("GPU"));
-    } catch (gpuErr) {
-      poseLandmarker = await PoseLandmarker.createFromOptions(vision, options("CPU"));
+    const gl = document.createElement("canvas").getContext("webgl");
+    let softwareGL = !gl;
+    if (gl) {
+      const info = gl.getExtension("WEBGL_debug_renderer_info");
+      const renderer = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : "";
+      softwareGL = /swiftshader|llvmpipe|softpipe|software/i.test(renderer || "");
     }
+    const modelStarted = performance.now();
+    const firstDelegate = softwareGL ? "CPU" : "GPU";
+    try {
+      poseLandmarker = await PoseLandmarker.createFromOptions(vision, options(firstDelegate));
+      window.__tcTiming.delegate = firstDelegate;
+    } catch (err) {
+      const fallback = firstDelegate === "GPU" ? "CPU" : "GPU";
+      poseLandmarker = await PoseLandmarker.createFromOptions(vision, options(fallback));
+      window.__tcTiming.delegate = fallback;
+    }
+    window.__tcTiming.modelMs = Math.round(performance.now() - modelStarted);
     drawingUtils = new DrawingUtils(ctx);
-    analysisStatus.innerHTML = '<span class="spinner"></span>Model loaded. Analyzing…';
+    if (!analysisStatus.querySelector(".error-toast")) analysisStatus.textContent = "Pose model ready.";
   } catch (err) {
     analysisStatus.innerHTML = `<div class="error-toast">Could not load the pose model. Check your connection and try again.</div>`;
     throw err;
@@ -2504,52 +2574,64 @@ const hiddenSample = document.createElement('canvas');
 const hiddenCtx = hiddenSample.getContext('2d', { willReadFrequently: true });
 let ballHistory = []; // {time, x, y}
 
+let prevBallPixels = null;
 function detectBall(videoEl) {
-  const w = Math.min(320, videoEl.videoWidth); // downscale for speed
-  const h = Math.round(w * (videoEl.videoHeight / videoEl.videoWidth));
+  // A ball is a small moving yellow blob. Averaging every yellow pixel locks onto
+  // a yellow racket or a green court, so anything bigger than a ball is rejected.
+  const w = 160;
+  const h = Math.max(1, Math.round(w * (videoEl.videoHeight / Math.max(1, videoEl.videoWidth))));
   hiddenSample.width = w;
   hiddenSample.height = h;
   hiddenCtx.drawImage(videoEl, 0, 0, w, h);
   const frame = hiddenCtx.getImageData(0, 0, w, h).data;
-
-  let sumX = 0, sumY = 0, count = 0;
-
-  for (let py = 0; py < h; py += 2) {
-    for (let px = 0; px < w; px += 2) {
-      const idx = (py * w + px) * 4;
-      const r = frame[idx], g = frame[idx+1], b = frame[idx+2];
-      // tennis ball yellow-green: high R+G, lower B, G slightly dominant
-      if (g > 130 && r > 110 && b < 130 && (g - b) > 30 && (r - b) > 0) {
-        sumX += px; sumY += py; count++;
-      }
+  const mask = new Uint8Array(w * h);
+  let count = 0;
+  for (let p = 0, i = 0; p < mask.length; p++, i += 4) {
+    const r = frame[i], g = frame[i + 1], b = frame[i + 2];
+    const yellow = r > 175 && g > 150 && b < 120 && r + g > b * 3.4;
+    let moving = true;
+    if (prevBallPixels && prevBallPixels.length === frame.length) {
+      moving = Math.abs(r - prevBallPixels[i]) + Math.abs(g - prevBallPixels[i + 1]) > 36;
+    }
+    if (yellow && moving) {
+      mask[p] = 1;
+      count++;
     }
   }
-
-  if (count < 3 || count > (w*h*0.15)) {
-    // too few pixels (no ball) or too many (bad lighting/whole court matching) -> reject
-    return null;
+  prevBallPixels = new Uint8ClampedArray(frame);
+  if (count < 2 || count > 36) return null;
+  let minX = w, minY = h, maxX = 0, maxY = 0, sx = 0, sy = 0;
+  for (let p = 0; p < mask.length; p++) {
+    if (!mask[p]) continue;
+    const x = p % w;
+    const y = (p / w) | 0;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+    sx += x;
+    sy += y;
   }
-
-  // scale centroid back to full video resolution
-  const scaleX = videoEl.videoWidth / w;
-  const scaleY = videoEl.videoHeight / h;
-  return { x: (sumX / count) * scaleX, y: (sumY / count) * scaleY };
+  if (maxX - minX > 12 || maxY - minY > 12) return null;
+  return {
+    x: (sx / count) * (videoEl.videoWidth / w),
+    y: (sy / count) * (videoEl.videoHeight / h)
+  };
 }
 
 function pxToMph(pxPerSec) {
-  if (pxPerFoot) {
-    const ftPerSec = pxPerSec / pxPerFoot;
-    return ftPerSec * 0.681818; // ft/s to mph
-  }
-  // fallback rough relative estimate if not calibrated
-  return Math.min(95, (pxPerSec / overlay.width) * 60);
+  if (!pxPerFoot || !Number.isFinite(pxPerSec) || pxPerSec <= 0) return null;
+  const mph = (pxPerSec / pxPerFoot) * 0.681818;
+  // Outside this band the track grabbed the racket, a line, or a bad scale.
+  if (mph < 15 || mph > 150) return null;
+  return mph;
 }
 
 
 analyzeBtn.addEventListener('click', async () => {
   if (!video.src) return;
-  if (!calibSkipped && !pxPerFoot) {
-    analysisStatus.innerHTML = 'Tip: calibrate above for real mph, or click "Skip" to use rough estimates.';
+  if (!pxPerFoot) {
+    analysisStatus.textContent = 'No court line yet, so ball speed stays blank. Stroke notes still run.';
   }
   analyzeBtn.disabled = true;
   analyzeBtn.innerHTML = '<span class="spinner dark"></span>Analyzing…';
@@ -2559,246 +2641,374 @@ analyzeBtn.addEventListener('click', async () => {
   feedbackList.innerHTML = '';
   try {
     await ensurePoseModel();
-  } catch { analyzeBtn.disabled = false; analyzeBtn.textContent = 'Analyze video'; return; }
+  } catch { analyzeBtn.disabled = false; analyzeBtn.textContent = 'Analyze video'; analyzing = false; return; }
 
-  video.currentTime = 0;
-  video.muted = true;
-  try {
-    await video.play();
-  } catch (err) {
-    analysisStatus.innerHTML = `<div class="error-toast">⚠️ Couldn't play this video (${err.message}). Try a different file — MP4 with H.264 codec works best.</div>`;
+  if (!video.videoWidth || !video.videoHeight) {
+    analysisStatus.innerHTML = '<div class="error-toast">This video has no picture frames. Try an MP4 (H.264) or MOV.</div>';
     analyzeBtn.disabled = false;
     analyzeBtn.textContent = 'Analyze video';
+    analyzing = false;
     return;
   }
-
-  let lastWristX = null, lastWristY = null;
-  let lastLWristX = null, lastLWristY = null;
-  let lastTime = 0;
-  let cooldown = 0;
-  let speeds = [];
-  let shotCounts = {};
-  let lastBall = null;
-  let lastBallTime = 0;
-  let motionSamples = []; // {time, motion}
-  const tagCanvas = document.createElement('canvas');
-  const tagCtx = tagCanvas.getContext('2d', { willReadFrequently: true });
-
-  function loop() {
-    if (video.paused || video.ended) {
-      finishAnalysis(speeds, shotCounts, motionSamples);
-      return;
-    }
-    const ts = performance.now();
-    const result = poseLandmarker.detectForVideo(video, ts);
-
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
-    ballCtx.clearRect(0, 0, ballCanvas.width, ballCanvas.height);
-
-    // --- ball detection every frame ---
-    const ball = detectBall(video);
-    let currentBallSpeedMph = null;
-    if (ball) {
-      ballHistory.push({ time: video.currentTime, x: ball.x, y: ball.y });
-      if (ballHistory.length > 12) ballHistory.shift();
-
-      ballCtx.fillStyle = '#ffe14d';
-      ballCtx.beginPath();
-      ballCtx.arc(ball.x, ball.y, 7, 0, Math.PI*2);
-      ballCtx.fill();
-      ballCtx.strokeStyle = 'rgba(255,225,77,0.5)';
-      ballCtx.lineWidth = 2;
-      ballCtx.beginPath();
-      ballHistory.forEach((p, i) => i === 0 ? ballCtx.moveTo(p.x, p.y) : ballCtx.lineTo(p.x, p.y));
-      ballCtx.stroke();
-
-      if (lastBall) {
-        const dt = video.currentTime - lastBallTime;
-        if (dt > 0) {
-          const dx = ball.x - lastBall.x;
-          const dy = ball.y - lastBall.y;
-          const pxPerSec = Math.sqrt(dx*dx + dy*dy) / dt;
-          currentBallSpeedMph = pxToMph(pxPerSec);
-        }
-      }
-      lastBall = ball;
-      lastBallTime = video.currentTime;
-    }
-
-    if (result.landmarks && result.landmarks.length > 0) {
-      // Pick which pose is "the user"
-      let lm = result.landmarks[0];
-      const multiOn = document.getElementById('multiPlayerToggle').checked;
-
-      // Preferred method: combine color signature + position continuity (set during "tag yourself" flow)
-      if (playerColorSig && result.landmarks.length > 1) {
-        const w = video.videoWidth, h = video.videoHeight;
-        if (tagCanvas.width !== w || tagCanvas.height !== h) {
-          tagCanvas.width = w;
-          tagCanvas.height = h;
-        }
-        tagCtx.drawImage(video, 0, 0);
-        const frameData = tagCtx.getImageData(0, 0, w, h);
-
-        // Score each pose: lower = better (combines color + position)
-        let best = { score: Infinity, pose: lm };
-        result.landmarks.forEach(pose => {
-          const xs = pose.map(p => p.x * w);
-          const ys = pose.map(p => p.y * h);
-          const bbox = [Math.min(...xs), Math.min(...ys), Math.max(...xs)-Math.min(...xs), Math.max(...ys)-Math.min(...ys)];
-          const sig = avgTorsoColor(frameData, bbox);
-          const colorDist = colorDistance(sig, playerColorSig); // 0-441 range
-          const colorScore = colorDist / 4.41; // normalize to 0-100
-
-          const centerX = (pose[11].x + pose[12].x + pose[23].x + pose[24].x) / 4;
-          const centerY = (pose[11].y + pose[12].y + pose[23].y + pose[24].y) / 4;
-          let posScore = 0;
-          if (lastTrackedPos) {
-            const dx = centerX - lastTrackedPos.x;
-            const dy = centerY - lastTrackedPos.y;
-            const posDist = Math.hypot(dx, dy); // normalized 0-1.4
-            posScore = posDist * 200; // heavily weighted
-          }
-
-          const total = colorScore + posScore;
-          if (total < best.score) best = { score: total, pose, cx: centerX, cy: centerY };
-        });
-        lm = best.pose;
-        // update tracked position for next frame
-        if (best.cx !== undefined) lastTrackedPos = { x: best.cx, y: best.cy };
-
-        if (skeletonToggle.checked) {
-          const others = result.landmarks.filter(l => l !== lm);
-          others.forEach(o => {
-            drawingUtils.drawLandmarks(o, { radius: 2, color: 'rgba(155,176,159,0.4)' });
-            drawingUtils.drawConnectors(o, PoseLandmarker.POSE_CONNECTIONS, { color: 'rgba(155,176,159,0.4)', lineWidth: 1 });
-          });
-        }
-      }
-      // Fallback: near/far side selection if multi-player mode is on but no tag was set
-      else if (multiOn && result.landmarks.length > 1) {
-        const mySide = document.getElementById('mySide').value;
-        const hipY = arr => (arr[23].y + arr[24].y) / 2;
-        const sorted = [...result.landmarks].sort((a,b) => hipY(b) - hipY(a));
-        lm = mySide === 'near' ? sorted[0] : sorted[sorted.length - 1];
-        if (skeletonToggle.checked) {
-          const others = result.landmarks.filter(l => l !== lm);
-          others.forEach(o => {
-            drawingUtils.drawLandmarks(o, { radius: 2, color: 'rgba(155,176,159,0.4)' });
-            drawingUtils.drawConnectors(o, PoseLandmarker.POSE_CONNECTIONS, { color: 'rgba(155,176,159,0.4)', lineWidth: 1 });
-          });
-        }
-      }
-
-      if (skeletonToggle.checked) {
-        drawingUtils.drawLandmarks(lm, { radius: 3, color: '#c4e538' });
-        drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#c4e538', lineWidth: 2 });
-      }
-
-      // track both wrists, swing detection uses whichever hand is moving faster (auto-detects dominant hand)
-      const rWrist = lm[16], lWrist = lm[15];
-      const rx = rWrist.x * overlay.width, ry = rWrist.y * overlay.height;
-      const lx = lWrist.x * overlay.width, ly = lWrist.y * overlay.height;
-      const dt = video.currentTime - lastTime;
-
-      if (lastWristY !== null && dt > 0 && cooldown <= 0) {
-        const rdx = rx - lastWristX, rdy = ry - lastWristY;
-        const ldx = lx - lastLWristX, ldy = ly - lastLWristY;
-        const rSpeed = Math.sqrt(rdx*rdx + rdy*rdy) / dt;
-        const lSpeed = Math.sqrt(ldx*ldx + ldy*ldy) / dt;
-
-        // sample motion (combined wrist speed) roughly 4x/sec
-        motionSamples.push({ time: video.currentTime, motion: rSpeed + lSpeed });
-
-        const useRight = rSpeed >= lSpeed;
-        const wristPxPerSec = useRight ? rSpeed : lSpeed;
-        const dx = useRight ? rdx : ldx;
-        const dy = useRight ? rdy : ldy;
-        const racketWrist = useRight ? rWrist : lWrist;
-        const racketElbow = useRight ? lm[14] : lm[13];
-        const racketShoulder = useRight ? lm[12] : lm[11];
-        const offShoulder = useRight ? lm[11] : lm[12];
-        const hip = useRight ? lm[24] : lm[23];
-        const offHip = useRight ? lm[23] : lm[24];
-        const frontKnee = useRight ? lm[26] : lm[25];
-        const frontAnkle = useRight ? lm[28] : lm[27];
-        const nose = lm[0];
-
-        if (wristPxPerSec > overlay.width * 1.2) {
-          cooldown = 0.6;
-
-          const shotType = classifyShot(racketWrist, racketShoulder, hip, dx, dy, currentHandedness());
-          shotCounts[shotType] = (shotCounts[shotType] || 0) + 1;
-
-          const speedMph = currentBallSpeedMph !== null
-            ? currentBallSpeedMph
-            : pxToMph(wristPxPerSec);
-          speeds.push(speedMph);
-
-          // ---- Spin estimation ----
-          // Compare wrist path angle vs ball trajectory angle right after contact.
-          // Racket brushing up on ball → topspin (ball angle > wrist path angle)
-          // Racket cutting down → slice
-          // Similar angles → flat
-          let spinLabel = '—';
-          if (ballHistory.length >= 3) {
-            const b1 = ballHistory[ballHistory.length - 3];
-            const b2 = ballHistory[ballHistory.length - 1];
-            const ballAngle = Math.atan2(-(b2.y - b1.y), b2.x - b1.x) * 180 / Math.PI;
-            const wristAngle = Math.atan2(-dy, dx) * 180 / Math.PI;
-            const diff = ballAngle - wristAngle;
-            // For non-serve shots
-            if (shotType !== 'Serve / Overhead') {
-              if (diff > 12) spinLabel = 'topspin';
-              else if (diff < -12) spinLabel = 'slice';
-              else spinLabel = 'flat';
-            }
-          }
-
-          const note = generateFeedback(shotType, {
-            wrist: racketWrist, elbow: racketElbow, shoulder: racketShoulder,
-            offShoulder, hip, offHip, frontKnee, frontAnkle, nose
-          }, currentLevel());
-          const sourceTag = currentBallSpeedMph !== null ? '' : ' (ball not detected — estimate)';
-          events.push({
-            time: video.currentTime,
-            type: shotType,
-            speedEst: Math.round(speedMph),
-            spin: spinLabel,
-            note: note + sourceTag,
-            ballX: lastBall ? lastBall.x / overlay.width : null,
-            ballY: lastBall ? lastBall.y / overlay.height : null
-          });
-        }
-      }
-
-      lastWristX = rx; lastWristY = ry;
-      lastLWristX = lx; lastLWristY = ly;
-      lastTime = video.currentTime;
-    }
-
-    if (cooldown > 0) cooldown -= 1/30;
-
-    if (popupToggle.checked) {
-      const active = events.find(e => Math.abs(e.time - video.currentTime) < 0.15);
-      if (active) {
-        popup.style.display = 'block';
-        popup.style.left = '12px';
-        popup.style.top = '12px';
-        popup.textContent = `${active.type} • ~${active.speedEst} mph — ${active.note}`;
-      } else {
-        popup.style.display = 'none';
-      }
-    } else {
-      popup.style.display = 'none';
-    }
-
-    rafId = requestAnimationFrame(loop);
+  overlay.width = video.videoWidth;
+  overlay.height = video.videoHeight;
+  ballCanvas.width = video.videoWidth;
+  ballCanvas.height = video.videoHeight;
+  video.pause();
+  video.muted = true;
+  prevBallPixels = null;
+  window.__tcTiming.analyzeStarted = performance.now();
+  window.__tcTiming.inferMs = 0;
+  window.__tcTiming.inferCount = 0;
+  try {
+    await runSteppedAnalysis();
+  } catch (err) {
+    analysisStatus.innerHTML = `<div class="error-toast">Analysis stopped: ${escapeHtml(err.message || 'unknown error')}. A shorter MP4 usually works.</div>`;
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = 'Analyze video';
+    analyzing = false;
   }
-
-  rafId = requestAnimationFrame(loop);
 });
 
+function detectFrame(forceFull) {
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  let sx = 0, sy = 0, sw = vw, sh = vh;
+  // After the player is tagged, infer on a crop around them so a far,
+  // behind-the-baseline camera still sees the arm instead of the whole court.
+  if (lastTrackedPos && !forceFull) {
+    sw = vw * 0.55;
+    sh = vh * 0.78;
+    sx = Math.max(0, Math.min(vw - sw, lastTrackedPos.x * vw - sw * 0.5));
+    sy = Math.max(0, Math.min(vh - sh, lastTrackedPos.y * vh - sh * 0.4));
+  }
+  const longSide = 384;
+  const scale = longSide / Math.max(sw, sh);
+  const w = Math.max(2, Math.round(sw * scale));
+  const h = Math.max(2, Math.round(sh * scale));
+  if (poseSample.width !== w || poseSample.height !== h) {
+    poseSample.width = w;
+    poseSample.height = h;
+  }
+  poseSampleCtx.drawImage(video, sx, sy, sw, sh, 0, 0, w, h);
+  const started = performance.now();
+  const result = poseLandmarker.detect(poseSample);
+  window.__tcTiming.inferMs += performance.now() - started;
+  window.__tcTiming.inferCount += 1;
+  if (result.landmarks) {
+    result.landmarks.forEach(pose => {
+      pose.forEach(point => {
+        point.x = (sx + point.x * sw) / vw;
+        point.y = (sy + point.y * sh) / vh;
+      });
+    });
+  }
+  return result;
+}
+
+function frameLooksLikeScreenRecording() {
+  const w = 96;
+  const h = 54;
+  const sample = document.createElement("canvas");
+  sample.width = w;
+  sample.height = h;
+  const context = sample.getContext("2d", { willReadFrequently: true });
+  context.drawImage(video, 0, 0, w, h);
+  const data = context.getImageData(0, 0, w, h).data;
+  let edge = 0;
+  let darkEdge = 0;
+  let vividGreen = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      if (x < 8 || x >= w - 8) {
+        edge += 1;
+        if (r < 22 && g < 22 && b < 22) darkEdge += 1;
+      }
+      if (g > 150 && g > r + 45 && g > b + 35) vividGreen += 1;
+    }
+  }
+  return {
+    letterbox: edge > 0 && darkEdge / edge > 0.62,
+    greenOverlay: vividGreen > 40
+  };
+}
+
+function seekVideo(time) {
+  return new Promise((resolve) => {
+    const duration = Number.isFinite(video.duration) ? video.duration : time;
+    const target = Math.max(0, Math.min(time, Math.max(0, duration - 0.05)));
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener('seeked', finish);
+      resolve();
+    };
+    if (video.readyState >= 2 && Math.abs(video.currentTime - target) < 0.03) {
+      finish();
+      return;
+    }
+    video.addEventListener('seeked', finish);
+    setTimeout(finish, 800);
+    try { video.currentTime = target; }
+    catch (err) { finish(); }
+  });
+}
+
+function pickPose(result) {
+  const poses = (result && result.landmarks) || [];
+  if (!poses.length) return null;
+  const nearest = (list) => list.slice().sort((a, b) => ((b[23].y + b[24].y) - (a[23].y + a[24].y)))[0];
+  if (poses.length === 1) return lastTrackedPos ? poses[0] : nearest(poses);
+  if (document.getElementById('multiPlayerToggle').checked) {
+    const hipY = (p) => ((p[23] && p[23].y) || 0) + ((p[24] && p[24].y) || 0);
+    const sorted = [...poses].sort((a, b) => hipY(b) - hipY(a));
+    return document.getElementById('mySide').value === 'near' ? sorted[0] : sorted[sorted.length - 1];
+  }
+  if (lastTrackedPos) {
+    let best = poses[0];
+    let bestD = Infinity;
+    poses.forEach(p => {
+      const cx = (p[11].x + p[12].x + p[23].x + p[24].x) / 4;
+      const cy = (p[11].y + p[12].y + p[23].y + p[24].y) / 4;
+      const d = Math.hypot(cx - lastTrackedPos.x, cy - lastTrackedPos.y);
+      if (d < bestD) { best = p; bestD = d; }
+    });
+    if (bestD > 0.35) return null;
+    const cx = (best[11].x + best[12].x + best[23].x + best[24].x) / 4;
+    const cy = (best[11].y + best[12].y + best[23].y + best[24].y) / 4;
+    lastTrackedPos = { x: cx * 0.35 + lastTrackedPos.x * 0.65, y: cy * 0.35 + lastTrackedPos.y * 0.65 };
+    return best;
+  }
+  return poses[0];
+}
+
+function commitStrokes(samples, speeds, shotCounts) {
+  // One stroke is the whole fast motion, not every frame of it. A serve's
+  // takeback, reach, and racket drop were being logged as separate shots.
+  const groups = [];
+  let group = null;
+  samples.forEach(s => {
+    const torso = Math.hypot(s.shoulder.x - s.hip.x, s.shoulder.y - s.hip.y) || 0.05;
+    const minMove = Math.max(0.025, Math.min(0.12, torso * 1.1));
+    const hot = s.visible && s.bodySpeed > 2.4 && s.normSpeed > minMove;
+    if (hot) {
+      if (!group) group = [];
+      group.push(s);
+    } else if (group) {
+      const quietFor = s.t - group[group.length - 1].t;
+      if (quietFor < 0.4) group.push(s);
+      else { groups.push(group); group = null; }
+    }
+  });
+  if (group) groups.push(group);
+  const merged = [];
+  groups.forEach(g => {
+    const prev = merged[merged.length - 1];
+    if (prev && g[0].t - prev[prev.length - 1].t < 0.45) prev.push(...g);
+    else merged.push(g.slice());
+  });
+  merged.forEach(frames => {
+    const peak = frames.reduce((a, b) => (b.bodySpeed > a.bodySpeed ? b : a));
+    const peakTorso = Math.hypot(peak.shoulder.x - peak.hip.x, peak.shoulder.y - peak.hip.y) || 0.05;
+    if (peak.bodySpeed < 2.4 || peak.normSpeed < Math.max(0.035, Math.min(0.16, peakTorso * 1.4))) return;
+    const highest = frames.reduce((best, s) => {
+      const torso = Math.hypot(s.shoulder.x - s.hip.x, s.shoulder.y - s.hip.y) || 0.05;
+      const above = (s.shoulder.y - s.wrist.y) / torso;
+      return above > best.above ? { sample: s, above } : best;
+    }, { sample: frames[0], above: -Infinity });
+    const tossed = frames.some(s => {
+      const torso = Math.hypot(s.shoulder.x - s.hip.x, s.shoulder.y - s.hip.y) || 0.05;
+      return s.otherWrist && (s.shoulder.y - s.otherWrist.y) / torso > 0.35;
+    });
+    const serving = tossed && highest.above > 0.3;
+    const chosen = serving ? highest.sample : peak;
+    let shotType = serving ? "Serve / Overhead" : classifyShot(chosen.wrist, chosen.shoulder, chosen.hip, chosen.dx, chosen.dy, currentHandedness(), {
+      offShoulder: chosen.offShoulder,
+      otherWrist: chosen.otherWrist,
+      nose: chosen.nose
+    });
+    if (shotType === "Volley" && chosen.hip.y > 0.42) shotType = "Forehand";
+    shotCounts[shotType] = (shotCounts[shotType] || 0) + 1;
+    const note = noteForShot(shotType, {
+      wrist: chosen.wrist,
+      elbow: chosen.elbow,
+      shoulder: chosen.shoulder,
+      offShoulder: chosen.offShoulder,
+      hip: chosen.hip,
+      offHip: chosen.offHip,
+      frontKnee: chosen.knee,
+      frontAnkle: chosen.ankle,
+      nose: chosen.nose
+    }, currentLevel());
+    const speedEst = chosen.ballMph == null ? null : Math.round(chosen.ballMph);
+    if (speedEst != null) speeds.push(speedEst);
+    events.push({
+      time: chosen.t,
+      type: shotType,
+      speedEst,
+      spin: '—',
+      note,
+      ballX: chosen.ball ? chosen.ball.x / overlay.width : null,
+      ballY: chosen.ball ? chosen.ball.y / overlay.height : null
+    });
+  });
+}
+
+async function runSteppedAnalysis() {
+  const duration = video.duration;
+  if (!Number.isFinite(duration) || duration <= 0) {
+    throw new Error('the clip has no duration');
+  }
+  const limit = Math.min(duration, 40);
+  const step = limit > 16 ? 1 / 8 : 1 / 12;
+  const speeds = [];
+  const shotCounts = {};
+  const motionSamples = [];
+  let poseFrames = 0;
+  let prev = null;
+  let bestShot = null;
+  let timestamp = 1;
+  const poseSamples = [];
+  ballHistory = [];
+
+  const screen = frameLooksLikeScreenRecording();
+  window.__tcTiming.screenRecording = screen;
+  video.playbackRate = 4;
+  video.muted = true;
+  await seekVideo(0);
+  try { await video.play(); }
+  catch (err) {
+    throw new Error(err && err.name === "NotSupportedError"
+      ? "This browser cannot play the video. iPhone HEVC files need to be exported as H.264 MP4."
+      : (err.message || "playback failed"));
+  }
+  let nextT = 0;
+  let stalls = 0;
+  let lastTime = -1;
+  while (video.currentTime < limit - 0.03 && !video.ended && stalls < 40) {
+    if (video.currentTime + 0.008 < nextT) {
+      if (video.paused) {
+        try { await video.play(); } catch (err) { break; }
+      }
+      await new Promise(requestAnimationFrame);
+      if (Math.abs(video.currentTime - lastTime) < 0.001) stalls += 1;
+      else stalls = 0;
+      lastTime = video.currentTime;
+      continue;
+    }
+    video.pause();
+    const t = video.currentTime;
+    let result = detectFrame(false);
+    if (lastTrackedPos && (!(result.landmarks && result.landmarks.length))) result = detectFrame(true);
+    nextT = t + step;
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    ballCtx.clearRect(0, 0, ballCanvas.width, ballCanvas.height);
+    const ball = detectBall(video);
+    let ballMph = null;
+    if (ball) {
+      ballHistory.push({ time: t, x: ball.x, y: ball.y });
+      if (ballHistory.length > 8) ballHistory.shift();
+      if (ballHistory.length >= 2) {
+        const a = ballHistory[ballHistory.length - 2];
+        const b = ballHistory[ballHistory.length - 1];
+        const dtb = b.time - a.time;
+        if (dtb > 0) ballMph = pxToMph(Math.hypot(b.x - a.x, b.y - a.y) / dtb);
+      }
+      ballCtx.fillStyle = '#ffe14d';
+      ballCtx.beginPath();
+      ballCtx.arc(ball.x, ball.y, 8, 0, Math.PI * 2);
+      ballCtx.fill();
+    }
+    const lm = pickPose(result);
+    if (lm && lm[16] && lm[12] && lm[24]) {
+      poseFrames++;
+      const righty = currentHandedness() !== 'left';
+      const wrist = righty ? lm[16] : lm[15];
+      const otherWrist = righty ? lm[15] : lm[16];
+      const elbow = righty ? lm[14] : lm[13];
+      const shoulder = righty ? lm[12] : lm[11];
+      const offShoulder = righty ? lm[11] : lm[12];
+      const hip = righty ? lm[24] : lm[23];
+      const offHip = righty ? lm[23] : lm[24];
+      const knee = righty ? lm[26] : lm[25];
+      const ankle = righty ? lm[28] : lm[27];
+      const torso = Math.hypot(shoulder.x - hip.x, shoulder.y - hip.y) || 0.05;
+      if (prev) {
+        const dt = t - prev.t;
+        const dx = (wrist.x - prev.x) * overlay.width;
+        const dy = (wrist.y - prev.y) * overlay.height;
+        const normSpeed = dt > 0 ? Math.hypot(wrist.x - prev.x, wrist.y - prev.y) / dt : 0;
+        const bodySpeed = normSpeed / torso;
+        motionSamples.push({ time: t, motion: bodySpeed });
+        const visible = wrist.visibility == null || wrist.visibility >= 0.4;
+        poseSamples.push({
+          t, wrist, otherWrist, elbow, shoulder, offShoulder, hip, offHip,
+          knee, ankle, nose: lm[0], dx, dy, bodySpeed, normSpeed, ballMph, ball, visible, lm
+        });
+        if (!bestShot || bodySpeed > bestShot.bodySpeed) bestShot = { time: t, bodySpeed };
+      }
+      prev = { t, x: wrist.x, y: wrist.y };
+      if (skeletonToggle.checked && drawingUtils) {
+        drawingUtils.drawLandmarks(lm, { radius: 3, color: '#d6ef4a' });
+        drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#d6ef4a', lineWidth: 2 });
+      }
+    }
+    if (poseSamples.length > 0 && poseSamples.length % 8 === 0) {
+      events.length = 0;
+      Object.keys(shotCounts).forEach(k => delete shotCounts[k]);
+      speeds.length = 0;
+      commitStrokes(poseSamples, speeds, shotCounts);
+      paintShotList();
+      analysisStatus.innerHTML = `<span class="spinner"></span>Reading ${t.toFixed(1)}s of ${limit.toFixed(0)}s — ${events.length} shot${events.length === 1 ? "" : "s"} so far`;
+      await new Promise(r => setTimeout(r, 0));
+    }
+    if (t < limit - 0.05) {
+      try { video.play(); } catch (err) { break; }
+    }
+  }
+  video.pause();
+
+  events.length = 0;
+  Object.keys(shotCounts).forEach(k => delete shotCounts[k]);
+  speeds.length = 0;
+  commitStrokes(poseSamples, speeds, shotCounts);
+  const featured = events.find(e => e.type === 'Serve / Overhead') || events[0];
+  if (featured) await seekVideo(featured.time);
+  finishAnalysis(speeds, shotCounts, motionSamples);
+  const clipped = duration - limit > 0.4;
+  const noun = events.length === 1 ? 'shot' : 'shots';
+  let status = `Analysis complete — ${events.length} ${noun}. The body was visible on ${poseFrames} frames.`;
+  if (!poseFrames) status = 'No player was visible. Step back so the whole body is in frame, then analyze again.';
+  else if (!events.length) status = `The player is in frame (${poseFrames} frames) but no full swing stood out. Include the whole stroke, not just the ready position.`;
+  if (!pxPerFoot) status += ' Mark a court line if you want mph.';
+  else if (events.length && !speeds.length) status += ' The ball itself was not tracked, so mph is left blank instead of guessing from the racket.';
+  if (clipped) status += ` Only the first ${Math.round(limit)}s were read — trim the clip to the rally you care about.`;
+  const recording = window.__tcTiming.screenRecording;
+  if (recording && (recording.letterbox || recording.greenOverlay)) {
+    status += " This looks like a screen recording" + (recording.greenOverlay ? " with a bright overlay" : "") + ". Black bars, playback controls, and a far wide camera make the player small, so confidence stays low.";
+  }
+  analysisStatus.textContent = status;
+  window.__tcTiming.analyzeMs = Math.round(performance.now() - window.__tcTiming.analyzeStarted);
+}
+
+function paintShotList() {
+  feedbackList.innerHTML = "";
+  events.forEach(e => {
+    const li = document.createElement("li");
+    const m = Math.floor(e.time / 60);
+    const s = Math.floor(e.time % 60).toString().padStart(2, "0");
+    const pace = e.speedEst == null ? "speed not measured" : `~${e.speedEst} mph`;
+    li.innerHTML = `<span class="time">${m}:${s}</span><strong>${e.type}</strong> — ${pace} — ${escapeHtml(e.note)}`;
+    const timeEl = li.querySelector(".time");
+    if (timeEl) timeEl.addEventListener("click", () => { video.currentTime = e.time; video.pause(); });
+    feedbackList.appendChild(li);
+  });
+}
 function finishAnalysis(speeds, shotCounts, motionSamples) {
   cancelAnimationFrame(rafId);
   analyzing = false;
@@ -2814,8 +3024,19 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
 
   statsGrid.style.display = 'grid';
   document.getElementById('statShots').textContent = events.length;
-  document.getElementById('statAvgSpeed').textContent = speeds.length ? Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length) : 0;
-  document.getElementById('statTopSpeed').textContent = speeds.length ? Math.round(Math.max(...speeds)) : 0;
+  const avgLabel = document.getElementById('statAvgSpeed').nextElementSibling;
+  const topLabel = document.getElementById('statTopSpeed').nextElementSibling;
+  if (speeds.length) {
+    document.getElementById('statAvgSpeed').textContent = Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length);
+    document.getElementById('statTopSpeed').textContent = Math.round(Math.max(...speeds));
+    if (avgLabel) avgLabel.textContent = 'Avg ball speed (mph)';
+    if (topLabel) topLabel.textContent = 'Top ball speed (mph)';
+  } else {
+    document.getElementById('statAvgSpeed').textContent = '—';
+    document.getElementById('statTopSpeed').textContent = '—';
+    if (avgLabel) avgLabel.textContent = 'Ball speed needs a court line and a visible ball';
+    if (topLabel) topLabel.textContent = 'Top ball speed';
+  }
   const mainShot = Object.entries(shotCounts).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('statMain').textContent = mainShot ? mainShot[0] : '-';
 
@@ -2827,18 +3048,18 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
   const byShot = {};
   events.forEach(e => {
     if (!byShot[e.type]) byShot[e.type] = { speeds: [], count: 0 };
-    byShot[e.type].speeds.push(e.speedEst);
     byShot[e.type].count++;
+    if (e.speedEst != null) byShot[e.type].speeds.push(e.speedEst);
   });
   const reportRows = Object.entries(byShot).map(([shot, d]) => {
-    const avg = Math.round(d.speeds.reduce((a,b)=>a+b,0) / d.speeds.length);
-    const grade = gradeSpeed(shot, avg);
+    const avg = d.speeds.length ? Math.round(d.speeds.reduce((a,b)=>a+b,0) / d.speeds.length) : null;
+    const grade = avg == null ? '—' : gradeSpeed(shot, avg);
     const consistency = calcConsistency(d.speeds);
     return `<div style="display:grid; grid-template-columns: 1fr auto auto auto; gap:10px; align-items:center; background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:6px;">
       <span>${shot}</span>
       <span style="color:var(--muted); font-size:0.82rem;">${d.count} shots</span>
       <span style="color:var(--muted); font-size:0.82rem;">${consistency !== null ? consistency + '% consistent' : '—'}</span>
-      <span style="background:var(--lime); color:#15260f; font-weight:700; padding:4px 10px; border-radius:6px;">${grade} <span style="font-weight:400; font-size:0.78rem;">(${avg} mph avg)</span></span>
+      <span style="background:var(--lime); color:#15260f; font-weight:700; padding:4px 10px; border-radius:6px;">${grade} <span style="font-weight:400; font-size:0.78rem;">${avg == null ? 'mph not measured' : '(' + avg + ' mph avg)'}</span></span>
     </div>`;
   }).join('');
 
@@ -2872,7 +3093,8 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
     const m = Math.floor(e.time / 60);
     const s = Math.floor(e.time % 60).toString().padStart(2, '0');
     const spinTag = (e.spin && e.spin !== '—') ? ` <span style="color:var(--muted); font-size:0.78rem;">[${e.spin}]</span>` : '';
-    li.innerHTML = `<span class="time">${m}:${s}</span><strong>${e.type}</strong>${spinTag} — ~${e.speedEst} mph — ${e.note}`;
+    const pace = e.speedEst == null ? 'speed not measured' : `~${e.speedEst} mph`;
+    li.innerHTML = `<span class="time">${m}:${s}</span><strong>${e.type}</strong>${spinTag} — ${pace} — ${e.note}`;
     li.querySelector('.time').addEventListener('click', () => {
       video.currentTime = e.time;
       video.pause();
@@ -3084,7 +3306,7 @@ async function handleTagClick(e) {
   hctx.drawImage(video, 0, 0);
   const imgData = hctx.getImageData(0, 0, hidden.width, hidden.height);
 
-  const result = poseLandmarker.detectForVideo(video, performance.now());
+  const result = detectFrame();
   if (!result.landmarks || result.landmarks.length === 0) {
     status.textContent = 'No people detected in this frame. Scrub to a clearer frame and click again.';
     return;
@@ -3156,7 +3378,7 @@ function updateLivePanel() {
   } else {
     const spinTag = (current.spin && current.spin !== '—') ? ` (${current.spin})` : '';
     document.getElementById('liveShotType').textContent = current.type + spinTag;
-    document.getElementById('liveShotSpeed').textContent = `~${current.speedEst} mph`;
+    document.getElementById('liveShotSpeed').textContent = current.speedEst == null ? 'speed not measured' : `~${current.speedEst} mph`;
     document.getElementById('liveShotNote').textContent = current.note || '';
   }
 
@@ -3269,6 +3491,10 @@ async function loadSharedSessionFromUrl() {
   setTimeout(() => showToast(`Viewing shared session: ${data.shot_count} shots, top ${data.top_speed} mph`, 4500), 500);
 }
 loadSharedSessionFromUrl();
+window.__tcReady = true;
+const preloadModel = () => { ensurePoseModel().catch(() => {}); };
+if ("requestIdleCallback" in window) requestIdleCallback(preloadModel, { timeout: 1500 });
+else setTimeout(preloadModel, 400);
 </script>
 
 </body>
