@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Tennis Coach</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0d1b0f">
+<meta name="theme-color" content="#07110c">
+<meta name="description" content="Film a rally and get shot-by-shot tennis coaching in your browser. Progress stays on this device.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tennis Coach">
 <link rel="apple-touch-icon" href="logo-180.png">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%230d1b0f'/%3E%3Ccircle cx='50' cy='50' r='38' fill='%23c4e538'/%3E%3Cpath d='M14 50 C 30 25, 70 25, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3Cpath d='M14 50 C 30 75, 70 75, 86 50' stroke='%231e5631' stroke-width='4' fill='none'/%3E%3C/svg%3E">
+<link rel="icon" href="logo-192.png" type="image/png">
 <style>
   :root {
     --green: #1e5631;
@@ -337,102 +338,33 @@
   }
   .session-item .meta { color: var(--muted); font-size: 0.78rem; }
 </style>
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 
+<a class="skip" href="#main">Skip to content</a>
 <canvas id="rippleBg"></canvas>
-
-<script>
-(function() {
-  const canvas = document.getElementById('rippleBg');
-  const c = canvas.getContext('2d');
-  let ripples = [];
-  let w, h;
-
-  function resize() {
-    w = canvas.width = window.innerWidth;
-    h = canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resize);
-  resize();
-
-  function spawnRipple() {
-    ripples.push({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      r: 0,
-      maxR: 140 + Math.random() * 220,
-      speed: 0.4 + Math.random() * 0.5,
-      alpha: 0.16 + Math.random() * 0.1,
-      hue: Math.random() > 0.5 ? 'lime' : 'green'
-    });
-  }
-
-  // seed a few ripples at staggered ages so it doesn't look empty on load
-  for (let i = 0; i < 6; i++) {
-    ripples.push({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      r: Math.random() * 200,
-      maxR: 140 + Math.random() * 220,
-      speed: 0.4 + Math.random() * 0.5,
-      alpha: 0.16 + Math.random() * 0.1,
-      hue: Math.random() > 0.5 ? 'lime' : 'green'
-    });
-  }
-
-  let frame = 0;
-  function loop() {
-    frame++;
-    c.clearRect(0, 0, w, h);
-
-    // subtle base gradient wash for a "water" feel
-    const grad = c.createRadialGradient(w*0.5, h*0.3, 0, w*0.5, h*0.3, Math.max(w,h)*0.8);
-    grad.addColorStop(0, 'rgba(30, 86, 49, 0.12)');
-    grad.addColorStop(1, 'rgba(13, 27, 15, 0)');
-    c.fillStyle = grad;
-    c.fillRect(0, 0, w, h);
-
-    ripples.forEach(rp => {
-      rp.r += rp.speed;
-      const progress = rp.r / rp.maxR;
-      const fade = Math.max(0, 1 - progress);
-      const color = rp.hue === 'lime' ? `196, 229, 56` : `30, 86, 49`;
-      c.beginPath();
-      c.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
-      c.strokeStyle = `rgba(${color}, ${rp.alpha * fade})`;
-      c.lineWidth = 1.4;
-      c.stroke();
-    });
-
-    ripples = ripples.filter(rp => rp.r < rp.maxR);
-    if (frame % 70 === 0) spawnRipple();
-
-    requestAnimationFrame(loop);
-  }
-  loop();
-})();
-</script>
-<header>
-  <h1>
-    <svg class="app-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="46" fill="#0d1b0f" stroke="#c4e538" stroke-width="2"/>
-      <circle cx="50" cy="50" r="36" fill="#c4e538"/>
-      <path d="M14 50 C 30 25, 70 25, 86 50" stroke="#1e5631" stroke-width="4" fill="none"/>
-      <path d="M14 50 C 30 75, 70 75, 86 50" stroke="#1e5631" stroke-width="4" fill="none"/>
+<script src="bg.js"></script>
+<header class="site-header">
+  <a class="brand" href="index.html">
+    <svg class="app-logo" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="46" fill="#07110c" stroke="#d6ef4a" stroke-width="3"/>
+      <circle cx="50" cy="50" r="34" fill="#d6ef4a"/>
+      <path d="M18 50 C 32 28, 68 28, 82 50" stroke="#14301c" stroke-width="4" fill="none"/>
+      <path d="M18 50 C 32 72, 68 72, 82 50" stroke="#14301c" stroke-width="4" fill="none"/>
     </svg>
     AI Tennis Coach
-  </h1>
-  <p>Upload your footage. Get shot-by-shot feedback. All in your browser.</p>
-  <div style="margin-top:12px;">
-    <button id="installBtn" style="display:none; padding:8px 18px; font-size:0.88rem;">📱 Install as app</button>
-    <button id="iosInstructBtn" class="secondary" style="display:none; padding:8px 18px; font-size:0.88rem;">📱 Add to home screen</button>
+  </a>
+  <div class="header-actions">
+    <p style="margin:0;">Shot-by-shot feedback, in the browser.</p>
+    <button type="button" id="installBtn" style="display:none;">Install app</button>
+    <button type="button" id="iosInstructBtn" class="secondary" style="display:none;">Add to home screen</button>
   </div>
 </header>
 
-<div id="iosInstallModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); backdrop-filter: blur(4px); z-index:100; align-items:center; justify-content:center; padding:20px;">
-  <div style="background:#16241a; border:1px solid var(--lime); border-radius:14px; max-width:420px; padding:24px; color:var(--text);">
-    <h2 style="margin-top:0;">📱 Add to Home Screen</h2>
+<div id="iosInstallModal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="iosTitle">
+  <div class="modal-card">
+    <h2 id="iosTitle" style="margin-top:0;">Add to Home Screen</h2>
     <p style="color:var(--muted); line-height:1.6;">To install this on your iPhone:</p>
     <ol style="color:var(--muted); line-height:1.9; padding-left:20px;">
       <li>Tap the <strong style="color:var(--text);">Share button</strong> at the bottom of Safari (the square with an arrow pointing up)</li>
@@ -444,43 +376,53 @@
   </div>
 </div>
 
-<div class="auth-bar" id="authBar" style="padding: 14px 20px;">
-  <span id="loggedOutView" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-    <input type="email" id="authEmail" placeholder="email" style="width:180px; padding:8px 12px; font-size:0.9rem; background:#0d1b0f; border:1px solid #2f4f35; color:var(--text); border-radius:8px;">
-    <input type="password" id="authPassword" placeholder="password" style="width:150px; padding:8px 12px; font-size:0.9rem; background:#0d1b0f; border:1px solid #2f4f35; color:var(--text); border-radius:8px;">
-    <button id="signInBtn" style="padding:8px 16px; font-size:0.88rem;">Sign In</button>
-    <button class="secondary" id="signUpBtn" style="padding:8px 16px; font-size:0.88rem;">Sign Up</button>
+<div class="auth-bar" id="authBar">
+  <span id="loggedOutView">
+    <label class="sr-only" for="authEmail">Email</label>
+    <input type="email" id="authEmail" autocomplete="email" placeholder="Email">
+    <label class="sr-only" for="authPassword">Password</label>
+    <input type="password" id="authPassword" autocomplete="current-password" placeholder="Password">
+    <button type="button" id="signInBtn">Sign in</button>
+    <button type="button" class="secondary" id="signUpBtn">Create account</button>
+    <span style="color:var(--muted);">Optional. Coaching works without an account.</span>
   </span>
-  <span id="loggedInView" style="display:none; align-items:center; gap:10px;">
+  <span id="loggedInView">
     <span class="user-email" id="userEmailLabel"></span>
-    <button class="secondary" id="signOutBtn" style="padding:8px 16px; font-size:0.88rem;">Sign Out</button>
+    <button type="button" class="secondary" id="signOutBtn">Sign out</button>
   </span>
 </div>
 
-<div class="auth-bar" id="navBar" style="justify-content:center; gap: 4px; flex-wrap: wrap;">
-  <button class="secondary" id="navAnalyze">🎾 Analyze</button>
-  <button class="secondary" id="navDashboard">📈 Dashboard</button>
-  <button class="secondary" id="navCommunity">🌍 Community</button>
-  <button class="secondary" id="navLeaderboard">🏆 Leaderboard</button>
-  <button class="secondary" id="navProfile">👤 Profile</button>
-  <button class="secondary" id="navAbout">ℹ️ About</button>
+<nav id="navBar" aria-label="Sections">
+  <button type="button" class="secondary" id="navAnalyze" data-tab="analyze">Analyze</button>
+  <button type="button" class="secondary" id="navPractice" data-tab="practice">Practice</button>
+  <button type="button" class="secondary" id="navDashboard" data-tab="dashboard">Dashboard</button>
+  <button type="button" class="secondary" id="navCommunity" data-tab="community">Community</button>
+  <button type="button" class="secondary" id="navLeaderboard" data-tab="leaderboard">Leaderboard</button>
+  <button type="button" class="secondary" id="navProfile" data-tab="profile">Profile</button>
+  <button type="button" class="secondary" id="navAbout" data-tab="about">About</button>
+</nav>
+<div id="cloudBanner" class="cloud-banner" hidden>
+  Cloud sync is offline, so accounts, the community feed, and the leaderboard are paused. Analysis, drills, and progress still save on this device.
 </div>
 
-<main>
+<main id="main">
 
 <div id="tabAnalyze">
 
   <div class="card">
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-      <div class="upload-zone" id="uploadZone" style="padding:24px 12px;">
-        <strong>📁 Upload video</strong>
-        <p style="margin-top:4px;">MP4, MOV, or WebM</p>
+    <div class="upload-grid">
+      <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Upload a video">
+        <strong>Upload video</strong>
+        <p>MP4, MOV, or WebM</p>
         <input type="file" id="fileInput" accept="video/*">
       </div>
-      <div class="upload-zone" id="recordZone" style="padding:24px 12px;">
-        <strong>📹 Record now</strong>
-        <p style="margin-top:4px;">Use your device camera</p>
+      <div class="upload-zone" id="recordZone" role="button" tabindex="0">
+        <strong>Record now</strong>
+        <p>Use your device camera</p>
       </div>
+    </div>
+    <div class="controls" style="margin-top:12px;">
+      <button type="button" class="secondary" id="loadSampleBtn">Preview a sample rally</button>
     </div>
     <div style="margin-top:16px; font-size: 0.85rem; color: var(--muted); line-height: 1.6;">
       <strong style="color: var(--text);">📹 For the most accurate analysis, film like this:</strong>
@@ -548,10 +490,13 @@
       </p>
       <div>
         Reference line:
+        <label class="sr-only" for="refLine">Reference line length</label>
         <select id="refLine">
-          <option value="78">Full baseline-to-baseline (78 ft)</option>
-          <option value="36">Singles court width (27 ft)</option>
-          <option value="21">Service box width (13.5 ft)</option>
+          <option value="78">Baseline to baseline (78 ft)</option>
+          <option value="36">Doubles width, sideline to sideline (36 ft)</option>
+          <option value="27">Singles width, sideline to sideline (27 ft)</option>
+          <option value="21">Net to service line (21 ft)</option>
+          <option value="13.5">Service box width (13.5 ft)</option>
           <option value="custom">Custom distance</option>
         </select>
         <span id="customDistWrap" style="display:none;">
@@ -565,8 +510,8 @@
       </div>
     </div>
 
-    <div style="display:flex; gap:14px; flex-wrap:wrap;">
-      <div class="video-wrap" id="videoWrap" style="flex: 1 1 400px; min-width: 300px;">
+    <div class="video-stage">
+      <div class="video-wrap" id="videoWrap">
         <video id="video" controls playsinline></video>
         <canvas id="overlay"></canvas>
         <canvas id="ballCanvas"></canvas>
@@ -586,8 +531,9 @@
     </div>
 
     <div class="controls">
-      <button id="analyzeBtn">▶ Analyze Video</button>
-      <button class="secondary" id="resetBtn">Upload Different Video</button>
+      <button type="button" id="analyzeBtn">Analyze video</button>
+      <button type="button" class="secondary" id="playPauseBtn">Play / pause</button>
+      <button type="button" class="secondary" id="resetBtn">Upload a different video</button>
       <label class="toggle">
         <input type="checkbox" id="popupToggle" checked>
         Show coaching pop-ups
@@ -678,21 +624,21 @@
   <div class="card">
     <h3 style="margin-top:0;">How this works</h3>
     <p style="color: var(--muted); font-size: 0.88rem; line-height:1.5;">
-      Pose tracking runs via MediaPipe. Ball tracking uses color + motion detection tuned for
-      standard yellow-green tennis balls (works best with good lighting and a ball that contrasts
-      against the court/background). Speed is converted to real mph using the calibration step,
-      where you mark a known court distance once per video. Without calibration, speed falls back
-      to a rough relative estimate. This is a lightweight CV approach, not a trained ball-detection
-      model — it can lose the ball on fast blurred frames or busy backgrounds, and accuracy improves
-      a lot with a clear side-on camera angle.
+      Pose tracking uses MediaPipe in your browser. Ball tracking looks for a yellow-green ball
+      against the court, so lighting and a side-on camera matter. Mark a real court line and speed
+      is in miles per hour. Skip that and the number is only a rough estimate. Notes come from
+      body position (contact point, elbow, rotation, knees, balance), not from a chat model.
+      The ball can disappear on fast, blurry frames.
     </p>
   </div>
 
 </div>
 
+<div id="tabPractice" style="display:none;"></div>
+
 <div id="tabDashboard" style="display:none;">
-  <div class="card" id="dashboardLoggedOut">
-    <p style="color: var(--muted);">Sign in to see your progress dashboard.</p>
+  <div class="card" id="dashboardLoggedOut" style="display:none;">
+    <p style="color: var(--muted); margin:0;">Sign in to sync this dashboard across devices. What you analyze here is already saved in this browser.</p>
   </div>
   <div id="dashboardContent" style="display:none;">
     <div class="card">
@@ -756,12 +702,13 @@
 </div>
 
 <div id="tabProfile" style="display:none;">
-  <div class="card" id="profileLoggedOut">
-    <p style="color: var(--muted);">Sign in to set up your profile.</p>
+  <div class="card" id="profileLoggedOut" style="display:none;">
+    <p style="color: var(--muted); margin:0;">Your level and racket hand are saved on this device. Sign in if you also want them on your account.</p>
   </div>
   <div id="profileContent" style="display:none;">
     <div class="card">
-      <h3 style="margin-top:0;">👤 Your profile</h3>
+      <h3 style="margin-top:0;">Your profile</h3>
+      <p id="profileCloudNote" style="color:var(--muted); margin-top:0;"></p>
       <label style="display:block; margin-bottom:10px;">
         <div style="color:var(--muted); font-size:0.82rem; margin-bottom:4px;">Username</div>
         <input type="text" id="profileUsername" placeholder="e.g. courtking" style="width:100%; padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text);">
@@ -858,23 +805,12 @@
 
 </main>
 
-<div id="onboardingModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); backdrop-filter: blur(4px); z-index:100; align-items:center; justify-content:center; padding:20px;">
-  <div style="background:#16241a; border:1px solid var(--lime); border-radius:14px; max-width:520px; padding:24px; color:var(--text);">
-    <h2 style="margin-top:0;">Welcome to AI Tennis Coach 🎾</h2>
-    <p style="color:var(--muted); line-height:1.6;">Quick tour before you start:</p>
-    <ol style="color:var(--muted); line-height:1.7; padding-left:20px;">
-      <li><strong style="color:var(--text);">Film side-on</strong> from the fence, not from behind the baseline. Tripod = way better results.</li>
-      <li><strong style="color:var(--text);">Upload short clips</strong> (a rally or a few shots), not full matches.</li>
-      <li><strong style="color:var(--text);">Calibrate once</strong> by clicking two ends of a court line — this gives you real mph speeds.</li>
-      <li><strong style="color:var(--text);">Hit Analyze</strong> and watch the pose skeleton + ball tracking do the work.</li>
-      <li><strong style="color:var(--text);">Set your handedness</strong> in the Profile tab so classification is accurate for you.</li>
-    </ol>
-    <button id="onboardingCloseBtn" style="margin-top:8px;">Got it, let's go</button>
-  </div>
+<div id="onboardingModal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="onboardTitle">
+  <div class="modal-card" id="onboardingCard"></div>
 </div>
 
-<div id="confirmModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); backdrop-filter: blur(4px); z-index:110; align-items:center; justify-content:center; padding:20px;">
-  <div style="background:#16241a; border:1px solid #2f4f35; border-radius:14px; max-width:400px; padding:24px; color:var(--text);">
+<div id="confirmModal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="modal-card">
     <h3 id="confirmTitle" style="margin-top:0;">Confirm</h3>
     <p id="confirmMsg" style="color:var(--muted); line-height:1.5;"></p>
     <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
@@ -886,17 +822,11 @@
 
 <div id="toast" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--lime); color:#15260f; padding:12px 20px; border-radius:10px; font-weight:600; font-size:0.9rem; z-index:120; box-shadow:0 4px 20px rgba(0,0,0,0.4);"></div>
 
-<footer>AI Tennis Coach — built with MediaPipe Pose, runs 100% client-side.</footer>
+<footer>AI Tennis Coach. Pose analysis stays in the browser. An account is optional.</footer>
 
+<script src="pwa.js"></script>
 <script>
-// ---------- PWA install support ----------
-// Register service worker for installability
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed', err));
-  });
-}
-
+// ---------- PWA install prompt (registration lives in pwa.js) ----------
 // Detect iOS Safari (which doesn't support beforeinstallprompt but supports "Add to Home Screen")
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -942,17 +872,63 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <script type="module">
-import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import * as jsPDFModule from "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm";
-const jsPDF = jsPDFModule.jsPDF || jsPDFModule.default;
+import {
+  TECHNIQUES,
+  DRILLS,
+  classifyShot,
+  generateFeedback,
+  gradeSpeed,
+  calcConsistency,
+  segmentRallies,
+  mapToCourt,
+  tallyIssuesFromSessions,
+  focusLine,
+  suggestedDrillIds,
+  buildWeekPlan,
+  buildSampleSession,
+  consecutiveStreak,
+  dayKey,
+  STORAGE_KEYS
+} from "./coach.js";
 
-// ---------- Supabase setup ----------
-// Replace these two values with your own project's URL and anon (public) key,
-// found in Supabase dashboard → Project Settings → API.
+// The anon key is public by design. Access to rows is limited by Supabase row level security.
 const SUPABASE_URL = "https://stmksyzukrtiwlglwlpt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0bWtzeXp1a3J0aXdsZ2x3bHB0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NzcyMjMsImV4cCI6MjA5ODM1MzIyM30.RJSU8Xxq03NRgab8fd0OAdeifXGIR3SBc7izLOQ1Qz4";
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabase = null;
+let cloudReady = false;
+let PoseLandmarker, FilesetResolver, DrawingUtils;
+let jsPDF = null;
+
+async function loadVision() {
+  if (PoseLandmarker) return;
+  const mod = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14");
+  PoseLandmarker = mod.PoseLandmarker;
+  FilesetResolver = mod.FilesetResolver;
+  DrawingUtils = mod.DrawingUtils;
+}
+
+async function loadPdf() {
+  if (jsPDF) return jsPDF;
+  const mod = await import("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm");
+  jsPDF = mod.jsPDF || mod.default;
+  return jsPDF;
+}
+
+async function initCloud() {
+  const banner = document.getElementById('cloudBanner');
+  try {
+    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { error } = await supabase.auth.getSession();
+    if (error) throw error;
+    cloudReady = true;
+    if (banner) banner.hidden = true;
+  } catch (err) {
+    supabase = null;
+    cloudReady = false;
+    if (banner) banner.hidden = false;
+  }
+}
 
 const authEmail = document.getElementById('authEmail');
 const authPassword = document.getElementById('authPassword');
@@ -969,61 +945,123 @@ let currentUser = null;
 let userProfile = null;
 let cachedPBs = null;
 
+function readJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (err) {
+    return fallback;
+  }
+}
+function writeJSON(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); }
+  catch (err) { /* storage can be blocked in private mode */ }
+}
+function loadLocalSessions() {
+  const list = readJSON(STORAGE_KEYS.sessions, []);
+  return Array.isArray(list) ? list : [];
+}
+function saveLocalSessions(list) {
+  writeJSON(STORAGE_KEYS.sessions, list);
+}
+function loadLocalProfile() {
+  return readJSON(STORAGE_KEYS.profile, {});
+}
+function saveLocalProfile(profile) {
+  writeJSON(STORAGE_KEYS.profile, profile);
+}
+function currentHandedness() {
+  return (userProfile && userProfile.handedness) || loadLocalProfile().handedness || 'right';
+}
+function currentLevel() {
+  return (userProfile && userProfile.playing_level) || loadLocalProfile().playing_level || 'intermediate';
+}
+function pruneLocalMatches(list) {
+  const cutoff = Date.now() - 1000 * 60 * 60 * 24 * 90;
+  return list.filter(s => s.sample || s.session_type !== 'match' || new Date(s.created_at).getTime() >= cutoff);
+}
+async function getMySessions() {
+  const local = pruneLocalMatches(loadLocalSessions());
+  saveLocalSessions(local);
+  if (!(currentUser && supabase && cloudReady)) {
+    return local.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }
+  const { data, error } = await supabase.from('sessions').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+  if (error || !data) return local.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const remoteIds = new Set(data.map(s => s.id));
+  const onlyLocal = local.filter(s => !(s.remoteId && remoteIds.has(s.remoteId)));
+  return [...data, ...onlyLocal].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}
+
 async function refreshAuthUI() {
-  const { data: { user } } = await supabase.auth.getUser();
-  currentUser = user;
+  currentUser = null;
   cachedPBs = null;
-  if (user) {
+  if (supabase && cloudReady) {
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (!error) currentUser = data.user || null;
+    } catch (err) {
+      cloudReady = false;
+      const banner = document.getElementById('cloudBanner');
+      if (banner) banner.hidden = false;
+    }
+  }
+  historyCard.style.display = 'block';
+  if (currentUser) {
     loggedOutView.style.display = 'none';
     loggedInView.style.display = 'inline-flex';
-    userEmailLabel.textContent = user.email;
-    historyCard.style.display = 'block';
+    userEmailLabel.textContent = currentUser.email;
     if (typeof loadUserProfile === 'function') await loadUserProfile();
     if (typeof cleanupOldMatches === 'function') cleanupOldMatches();
-    loadSessions();
   } else {
     loggedOutView.style.display = 'flex';
     loggedInView.style.display = 'none';
-    historyCard.style.display = 'none';
     userProfile = null;
   }
+  loadSessions();
+}
+
+function cloudUnavailable() {
+  showToast('Cloud accounts are unavailable right now. Your coaching still saves on this device.');
 }
 
 signUpBtn.addEventListener('click', async () => {
+  if (!supabase || !cloudReady) { cloudUnavailable(); return; }
+  if (!authEmail.value.trim() || authPassword.value.length < 6) {
+    showToast('Use an email and a password of at least 6 characters.');
+    return;
+  }
   const { error } = await supabase.auth.signUp({
-    email: authEmail.value,
+    email: authEmail.value.trim(),
     password: authPassword.value
   });
-  if (error) { alert(error.message); return; }
+  if (error) { showToast(error.message); return; }
   track('sign_up');
-  alert('Account created. Check your email if confirmation is required, then sign in.');
+  showToast('Account created. Check your email if confirmation is required, then sign in.');
 });
 
 signInBtn.addEventListener('click', async () => {
+  if (!supabase || !cloudReady) { cloudUnavailable(); return; }
   const { error } = await supabase.auth.signInWithPassword({
-    email: authEmail.value,
+    email: authEmail.value.trim(),
     password: authPassword.value
   });
-  if (error) { alert(error.message); return; }
+  if (error) { showToast(error.message); return; }
   await refreshAuthUI();
   track('sign_in');
 });
 
 signOutBtn.addEventListener('click', async () => {
-  await supabase.auth.signOut();
+  if (supabase) await supabase.auth.signOut();
   refreshAuthUI();
 });
 
 async function loadSessions() {
-  if (!currentUser) return;
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    historyList.innerHTML = `<div class="error-toast">⚠️ Could not load sessions: ${error.message}</div>`;
+  let data = [];
+  try {
+    data = await getMySessions();
+  } catch (err) {
+    historyList.innerHTML = `<div class="error-toast">Could not load sessions.</div>`;
     return;
   }
   if (!data || data.length === 0) {
@@ -1045,12 +1083,13 @@ async function loadSessions() {
     const rewatchBtn = s.video_path
       ? `<button class="secondary rewatch-btn" data-path="${s.video_path}" data-session-id="${s.id}" style="padding:3px 10px; font-size:0.75rem;">▶ Rewatch</button>`
       : '';
+    const sampleTag = s.sample ? `<span class="pill">Sample</span>` : '';
     const matchTag = s.session_type === 'match'
-      ? `<span style="background:#223a26; color:var(--lime); padding:2px 8px; border-radius:20px; font-size:0.7rem; margin-right:6px;">Match${s.match_score ? ' · ' + s.match_score : ''}${s.match_opponent ? ' vs ' + s.match_opponent : ''}</span>`
+      ? `<span class="pill">Match${s.match_score ? ' · ' + escapeHtml(s.match_score) : ''}${s.match_opponent ? ' vs ' + escapeHtml(s.match_opponent) : ''}</span>`
       : '';
     div.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
-        <span>${matchTag}<strong>${s.shot_count} shots</strong></span>
+        <span>${sampleTag}${matchTag}<strong>${s.shot_count} shots</strong></span>
         <span class="meta">${date}</span>
       </div>
       <div style="color:var(--muted); font-size:0.82rem; margin-bottom:8px;">
@@ -1072,6 +1111,7 @@ async function loadSessions() {
       const path = btn.dataset.path;
       const sessionId = btn.dataset.sessionId;
       btn.textContent = 'Loading…';
+      if (!supabase || !cloudReady) { btn.textContent = 'Rewatch'; showToast('Cloud video storage is offline.'); return; }
       const { data: signed, error } = await supabase.storage.from('session-videos').createSignedUrl(path, 3600);
       if (error) { btn.textContent = '▶ Rewatch'; alert('Could not load video: ' + error.message); return; }
       // load the saved session's events and playback in the review card
@@ -1115,11 +1155,14 @@ async function loadSessions() {
       const sessionId = btn.dataset.sessionId;
       const videoPath = btn.dataset.videoPath;
       btn.textContent = 'Deleting…';
-      if (videoPath) {
-        await supabase.storage.from('session-videos').remove([videoPath]);
+      const session = data.find(x => x.id === sessionId);
+      saveLocalSessions(loadLocalSessions().filter(s => s.id !== sessionId && s.remoteId !== sessionId));
+      const remoteId = session && (session.remoteId || (!session.local ? session.id : null));
+      if (remoteId && supabase && currentUser && !session.sample) {
+        if (videoPath) await supabase.storage.from('session-videos').remove([videoPath]);
+        const { error } = await supabase.from('sessions').delete().eq('id', remoteId);
+        if (error) { showToast('Removed on this device. Cloud delete failed.'); }
       }
-      const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
-      if (error) { alert('Delete failed: ' + error.message); btn.textContent = '🗑 Delete'; return; }
       loadSessions();
     });
   });
@@ -1147,7 +1190,9 @@ async function loadSessions() {
 
 let lastSavedSessionId = null;
 
-function exportSessionAsPDF(session) {
+async function exportSessionAsPDF(session) {
+  try { await loadPdf(); }
+  catch (err) { showToast('Could not load the PDF library. Check your connection.'); return; }
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const w = doc.internal.pageSize.getWidth();
   const dateStr = new Date(session.created_at).toLocaleString();
@@ -1256,9 +1301,11 @@ function exportSessionAsCSV(session) {
 }
 
 async function saveSessionToSupabase(summary) {
-  if (!currentUser) return; // not logged in, skip silently
-  const { data, error } = await supabase.from('sessions').insert({
-    user_id: currentUser.id,
+  const localSession = {
+    id: (crypto.randomUUID && crypto.randomUUID()) || ('local-' + Date.now()),
+    local: true,
+    sample: false,
+    created_at: new Date().toISOString(),
     shot_count: summary.shotCount,
     avg_speed: summary.avgSpeed,
     top_speed: summary.topSpeed,
@@ -1268,19 +1315,43 @@ async function saveSessionToSupabase(summary) {
     match_opponent: summary.matchOpponent || null,
     match_score: summary.matchScore || null,
     is_public: false,
-    caption: ''
-  }).select().single();
+    caption: '',
+    video_path: null
+  };
+  saveLocalSessions([localSession, ...loadLocalSessions().filter(s => s.id !== localSession.id)]);
+  lastSavedSessionId = localSession.id;
 
-  if (error) {
-    console.error('Save failed:', error.message);
-  } else {
-    lastSavedSessionId = data.id;
-    loadSessions();
+  if (currentUser && supabase && cloudReady) {
+    const { data, error } = await supabase.from('sessions').insert({
+      user_id: currentUser.id,
+      shot_count: summary.shotCount,
+      avg_speed: summary.avgSpeed,
+      top_speed: summary.topSpeed,
+      main_shot: summary.mainShot,
+      events: summary.events,
+      session_type: summary.sessionType || 'practice',
+      match_opponent: summary.matchOpponent || null,
+      match_score: summary.matchScore || null,
+      is_public: false,
+      caption: ''
+    }).select().single();
+    if (error) {
+      showToast('Saved on this device. Cloud sync did not go through.');
+    } else if (data) {
+      lastSavedSessionId = data.id;
+      localSession.remoteId = data.id;
+      saveLocalSessions(loadLocalSessions().map(s => s.id === localSession.id ? localSession : s));
+    }
   }
+  loadSessions();
 }
 
 async function updatePublishStatus() {
   if (!lastSavedSessionId) return;
+  if (!supabase || !cloudReady || !currentUser) {
+    document.getElementById('publishStatus').textContent = 'Saved on this device. Sign in when cloud sync is available to publish.';
+    return;
+  }
   const isPublic = document.getElementById('publishToggle').checked;
   const caption = document.getElementById('publishCaption').value;
   const saveVideo = document.getElementById('saveVideoToggle').checked;
@@ -1314,10 +1385,12 @@ async function updatePublishStatus() {
   loadSessions();
 }
 
-refreshAuthUI();
+await initCloud();
+await refreshAuthUI();
 
 // ---------- Simple analytics ----------
 async function track(event, meta = {}) {
+  if (!supabase || !cloudReady) return;
   try {
     await supabase.from('analytics').insert({
       event,
@@ -1337,46 +1410,51 @@ const navAnalyze = document.getElementById('navAnalyze');
 const navDashboard = document.getElementById('navDashboard');
 const navCommunity = document.getElementById('navCommunity');
 
+const TABS = ['analyze', 'practice', 'dashboard', 'community', 'leaderboard', 'profile', 'about'];
 function showTab(tab) {
+  if (!TABS.includes(tab)) tab = 'analyze';
   tabAnalyze.style.display = tab === 'analyze' ? 'block' : 'none';
+  document.getElementById('tabPractice').style.display = tab === 'practice' ? 'block' : 'none';
   tabDashboard.style.display = tab === 'dashboard' ? 'block' : 'none';
   tabCommunity.style.display = tab === 'community' ? 'block' : 'none';
   document.getElementById('tabLeaderboard').style.display = tab === 'leaderboard' ? 'block' : 'none';
   document.getElementById('tabProfile').style.display = tab === 'profile' ? 'block' : 'none';
   document.getElementById('tabAbout').style.display = tab === 'about' ? 'block' : 'none';
+  document.querySelectorAll('#navBar button').forEach(btn => {
+    const on = btn.dataset.tab === tab;
+    btn.classList.toggle('is-active', on);
+    if (on) btn.setAttribute('aria-current', 'page');
+    else btn.removeAttribute('aria-current');
+  });
+  if (location.hash !== '#' + tab) history.replaceState(null, '', '#' + tab);
   track('tab_view', { tab });
+  if (tab === 'practice') renderPractice();
   if (tab === 'dashboard') renderDashboard();
   if (tab === 'community') loadCommunityFeed();
   if (tab === 'leaderboard') loadLeaderboard();
   if (tab === 'profile') renderProfile();
 }
 navAnalyze.addEventListener('click', () => showTab('analyze'));
+document.getElementById('navPractice').addEventListener('click', () => showTab('practice'));
 navDashboard.addEventListener('click', () => showTab('dashboard'));
 navCommunity.addEventListener('click', () => showTab('community'));
 document.getElementById('navLeaderboard').addEventListener('click', () => showTab('leaderboard'));
 document.getElementById('navProfile').addEventListener('click', () => showTab('profile'));
 document.getElementById('navAbout').addEventListener('click', () => showTab('about'));
+const initialTab = (location.hash || '').replace('#', '');
+showTab(TABS.includes(initialTab) ? initialTab : 'analyze');
 
 // ---------- Dashboard ----------
 const dashboardLoggedOut = document.getElementById('dashboardLoggedOut');
 const dashboardContent = document.getElementById('dashboardContent');
 
 async function renderDashboard() {
-  if (!currentUser) {
-    dashboardLoggedOut.style.display = 'block';
-    dashboardContent.style.display = 'none';
-    return;
-  }
-  dashboardLoggedOut.style.display = 'none';
+  dashboardLoggedOut.style.display = currentUser ? 'none' : 'block';
   dashboardContent.style.display = 'block';
 
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: true });
+  const data = (await getMySessions()).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-  if (error || !data || data.length === 0) {
+  if (!data.length) {
     const empty = section => `
       <div class="empty-state">
         <div class="emoji">📊</div>
@@ -1400,26 +1478,32 @@ async function renderDashboard() {
 }
 
 function drawSpeedChart(sessions) {
-  const svg = document.getElementById('speedChart');
+  const wrap = document.getElementById('speedChartWrap');
+  let svg = document.getElementById('speedChart');
+  if (!svg && wrap) {
+    wrap.innerHTML = '<svg id="speedChart" viewBox="0 0 600 200" style="width:100%; height:auto;"></svg>';
+    svg = document.getElementById('speedChart');
+  }
+  if (!svg) return;
   const w = 600, h = 200, pad = 30;
   const speeds = sessions.map(s => s.avg_speed || 0);
   const maxSpeed = Math.max(...speeds, 10);
-  const stepX = (w - pad*2) / Math.max(1, sessions.length - 1);
+  const stepX = sessions.length <= 1 ? 0 : (w - pad * 2) / (sessions.length - 1);
 
   let points = sessions.map((s, i) => {
-    const x = pad + i * stepX;
+    const x = sessions.length <= 1 ? w / 2 : pad + i * stepX;
     const y = h - pad - ((s.avg_speed || 0) / maxSpeed) * (h - pad*2);
     return `${x},${y}`;
   }).join(' ');
 
   let dots = sessions.map((s, i) => {
-    const x = pad + i * stepX;
+    const x = sessions.length <= 1 ? w / 2 : pad + i * stepX;
     const y = h - pad - ((s.avg_speed || 0) / maxSpeed) * (h - pad*2);
-    return `<circle cx="${x}" cy="${y}" r="4" fill="#c4e538"></circle>`;
+    return `<circle cx="${x}" cy="${y}" r="5" fill="#d6ef4a"></circle>`;
   }).join('');
 
   svg.innerHTML = `
-    <polyline points="${points}" fill="none" stroke="#c4e538" stroke-width="2"/>
+    <polyline points="${points}" fill="none" stroke="#d6ef4a" stroke-width="2"/>
     ${dots}
     <line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#2f4f35" stroke-width="1"/>
   `;
@@ -1448,92 +1532,25 @@ function renderShotMix(sessions) {
 }
 
 function renderDrillSuggestions(sessions) {
-  const issueCounts = {};
-  sessions.forEach(s => {
-    (s.events || []).forEach(e => {
-      const note = (e.note || '').toLowerCase();
-      if (note.includes('late') || note.includes('close to body')) issueCounts['late_contact'] = (issueCounts['late_contact']||0)+1;
-      if (note.includes('higher')) issueCounts['low_toss'] = (issueCounts['low_toss']||0)+1;
-      if (note.includes('follow-through')) issueCounts['follow_through'] = (issueCounts['follow_through']||0)+1;
-    });
-  });
-
-  const drillMap = {
-    late_contact: { title: 'Contact point drill', desc: 'Several shots show late/close contact. Try shadow swings focusing on meeting the ball further out in front, and feed-ball drills where a partner feeds balls slightly earlier than feels comfortable.' },
-    low_toss: { title: 'Serve toss & extension drill', desc: 'Your serve/overhead contact point is often low. Practice tossing against a wall, aiming to release the ball at full extension consistently before adding the swing back in.' },
-    follow_through: { title: 'Follow-through extension drill', desc: 'Backhand follow-through looks short across sessions. Try exaggerated full-extension shadow swings, finishing with the racket high over the opposite shoulder.' }
-  };
-
-  const sorted = Object.entries(issueCounts).sort((a,b) => b[1]-a[1]);
   const box = document.getElementById('drillSuggestions');
-
-  if (sorted.length === 0) {
-    box.innerHTML = '<p style="color:var(--muted);">No recurring issues flagged yet — keep logging sessions to get personalized drills.</p>';
+  const issues = tallyIssuesFromSessions(sessions);
+  const ids = suggestedDrillIds(issues, 3);
+  if (!Object.keys(issues).length) {
+    box.innerHTML = '<p style="color:var(--muted);">No repeating fault yet. The practice tab still has the full drill book.</p>';
     return;
   }
-
-  box.innerHTML = sorted.slice(0, 3).map(([key, count]) => {
-    const d = drillMap[key];
-    if (!d) return '';
-    return `<div style="margin-bottom:14px; background:#101d12; padding:12px; border-radius:8px;">
-      <strong style="color:var(--lime);">${d.title}</strong> <span style="color:var(--muted); font-size:0.78rem;">(flagged ${count}x)</span>
-      <p style="margin:6px 0 0; color:var(--muted);">${d.desc}</p>
-    </div>`;
+  box.innerHTML = ids.map(id => {
+    const drill = DRILLS.find(d => d.id === id);
+    if (!drill) return '';
+    return `<div class="plan-row"><strong style="color:var(--lime);">${escapeHtml(drill.title)}</strong>
+      <p style="margin:6px 0 0; color:var(--muted);">${escapeHtml(drill.steps[0])}</p></div>`;
   }).join('');
 }
 
 function renderTrainingProgram(sessions) {
   const box = document.getElementById('trainingProgram');
-  // count recurring issue types (same keywords used by drill suggestions)
-  const issueCounts = {};
-  sessions.forEach(s => {
-    (s.events || []).forEach(e => {
-      const note = (e.note || '').toLowerCase();
-      if (note.includes('late') || note.includes('close to body')) issueCounts.late_contact = (issueCounts.late_contact||0)+1;
-      if (note.includes('higher') || note.includes('extension')) issueCounts.serve_extension = (issueCounts.serve_extension||0)+1;
-      if (note.includes('follow-through')) issueCounts.follow_through = (issueCounts.follow_through||0)+1;
-      if (note.includes('rotation') || note.includes('square to the net')) issueCounts.rotation = (issueCounts.rotation||0)+1;
-      if (note.includes('knee') || note.includes('knees')) issueCounts.knee_bend = (issueCounts.knee_bend||0)+1;
-      if (note.includes('balance') || note.includes('off-balance')) issueCounts.balance = (issueCounts.balance||0)+1;
-    });
-  });
-
-  const dayDrills = {
-    late_contact: 'Feed-ball drill: partner feeds slightly earlier than comfortable. Focus on meeting the ball out in front of your body.',
-    serve_extension: 'Wall toss drill: 5 sets of 10 tosses, aiming for full extension release. Add the swing back in after.',
-    follow_through: 'Shadow swings: 5 sets of 10 backhands finishing with the racket high over your opposite shoulder.',
-    rotation: 'Split-step rotation drill: exaggerated shoulder turn before each shot. Work on separating hip and shoulder rotation.',
-    knee_bend: 'Wall rally with focus on bending the knees to load into each shot. 20 shots per side.',
-    balance: 'Balance drill: hit a series of shots, then freeze in your finish position for 2 seconds each. Reveals which shots pull you off-balance.'
-  };
-  const restDay = 'Rest & recovery — light stretching, foam rolling, or a walk. Repair is part of training.';
-  const cardio = 'Cardio + footwork: 20 minutes of light running plus ladder drills. Speed on court starts with fitness off court.';
-
-  const topIssues = Object.entries(issueCounts).sort((a,b) => b[1]-a[1]).map(([k]) => k);
-  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-  const plan = [];
-  let i = 0;
-  days.forEach((day, idx) => {
-    if (idx === 3) plan.push({ day, drill: cardio });
-    else if (idx === 6) plan.push({ day, drill: restDay });
-    else if (topIssues[i] && dayDrills[topIssues[i]]) {
-      plan.push({ day, drill: dayDrills[topIssues[i]] });
-      i++;
-    } else {
-      plan.push({ day, drill: 'Free hitting — focus on whichever shot felt weakest in your last session.' });
-    }
-  });
-
-  if (topIssues.length === 0) {
-    box.innerHTML = '<p style="color:var(--muted); margin:0 0 12px;">Log a few more sessions and your personalized 7-day program will appear here.</p>' +
-      plan.map(p => `<div style="background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:6px;">
-        <strong style="color:var(--lime);">${p.day}</strong> — <span style="color:var(--muted);">${p.drill}</span>
-      </div>`).join('');
-  } else {
-    box.innerHTML = plan.map(p => `<div style="background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:6px;">
-      <strong style="color:var(--lime);">${p.day}</strong> — ${p.drill}
-    </div>`).join('');
-  }
+  const plan = buildWeekPlan(tallyIssuesFromSessions(sessions));
+  box.innerHTML = plan.map(p => `<div class="plan-row"><strong style="color:var(--lime);">${p.day}</strong> — ${escapeHtml(p.drill)}</div>`).join('');
 }
 
 function renderWeeklySummaries(sessions) {
@@ -1611,12 +1628,15 @@ document.addEventListener('change', (e) => {
 document.addEventListener('click', async (e) => {
   if (e.target && e.target.id === 'confirmPublishBtn') {
     await updatePublishStatus();
-    document.getElementById('publishStatus').textContent = 'Saved.';
   }
 });
 
 async function loadCommunityFeed() {
   const feed = document.getElementById('communityFeed');
+  if (!supabase || !cloudReady) {
+    feed.innerHTML = `<div class="empty-state"><div class="msg">Community is offline</div><div class="hint">The cloud project is not reachable. Your own sessions are still on this device, under Analyze and Dashboard.</div></div>`;
+    return;
+  }
   feed.innerHTML = 'Loading...';
   const { data, error } = await supabase
     .from('sessions')
@@ -1704,26 +1724,146 @@ async function loadCommunityFeed() {
 
 function escapeHtml(str) {
   const div = document.createElement('div');
-  div.textContent = str;
+  div.textContent = str == null ? '' : String(str);
   return div.innerHTML;
 }
 
 // ---------- Onboarding ----------
 const onboardingModal = document.getElementById('onboardingModal');
-const onboardingCloseBtn = document.getElementById('onboardingCloseBtn');
-if (!localStorage.getItem('onboardedV1')) {
-  onboardingModal.style.display = 'flex';
+let onboardStep = 0;
+function renderOnboarding() {
+  const card = document.getElementById('onboardingCard');
+  const profile = loadLocalProfile();
+  if (onboardStep === 0) {
+    card.innerHTML = `
+      <h2 id="onboardTitle">Welcome to the coach</h2>
+      <p>Three things that make the feedback worth reading:</p>
+      <ol>
+        <li>Film side-on, from the fence, with your whole body in frame.</li>
+        <li>Use a short clip. One rally is better than a set.</li>
+        <li>Mark both ends of a court line so speed is in real mph.</li>
+      </ol>
+      <button type="button" id="onboardNext">Next</button>`;
+  } else {
+    card.innerHTML = `
+      <h2 id="onboardTitle">Your game</h2>
+      <p>This stays on this device and decides forehand versus backhand. You can change it later in Profile.</p>
+      <label>Level<br>
+        <select id="onboardLevel">
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </label>
+      <label style="display:block; margin-top:10px;">Racket hand<br>
+        <select id="onboardHand">
+          <option value="right">Right</option>
+          <option value="left">Left</option>
+        </select>
+      </label>
+      <div style="display:flex; gap:8px; margin-top:14px;">
+        <button type="button" class="secondary" id="onboardBack">Back</button>
+        <button type="button" id="onboardDone">Start</button>
+      </div>`;
+    document.getElementById('onboardLevel').value = profile.playing_level || 'beginner';
+    document.getElementById('onboardHand').value = profile.handedness || 'right';
+  }
+  card.querySelector('#onboardNext')?.addEventListener('click', () => { onboardStep = 1; renderOnboarding(); });
+  card.querySelector('#onboardBack')?.addEventListener('click', () => { onboardStep = 0; renderOnboarding(); });
+  card.querySelector('#onboardDone')?.addEventListener('click', () => {
+    const prev = loadLocalProfile();
+    saveLocalProfile({
+      ...prev,
+      playing_level: document.getElementById('onboardLevel').value,
+      handedness: document.getElementById('onboardHand').value
+    });
+    localStorage.setItem(STORAGE_KEYS.onboarded, '1');
+    onboardingModal.style.display = 'none';
+  });
+  card.querySelector('button')?.focus();
 }
-onboardingCloseBtn.addEventListener('click', () => {
-  localStorage.setItem('onboardedV1', '1');
+try {
+  if (!localStorage.getItem(STORAGE_KEYS.onboarded)) {
+    onboardingModal.style.display = 'flex';
+    renderOnboarding();
+  }
+} catch (err) {
   onboardingModal.style.display = 'none';
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && onboardingModal.style.display === 'flex') {
+    localStorage.setItem(STORAGE_KEYS.onboarded, '1');
+    onboardingModal.style.display = 'none';
+  }
 });
+
+async function renderPractice() {
+  const root = document.getElementById('tabPractice');
+  const allSessions = await getMySessions();
+  const sessions = allSessions.filter(s => !s.sample);
+  const issues = tallyIssuesFromSessions(allSessions);
+  const focusIds = suggestedDrillIds(issues, 3);
+  const log = readJSON(STORAGE_KEYS.drills, {});
+  const today = dayKey(new Date());
+  const doneToday = new Set(log[today] || []);
+  const practiceDays = Object.keys(log).filter(k => (log[k] || []).length);
+  const streak = consecutiveStreak([...practiceDays, ...sessions.map(s => dayKey(s.created_at))]);
+  const focusSource = sessions[0] || allSessions[0];
+  const focus = focusSource
+    ? focusLine(focusSource.events)
+    : 'Film a rally, or load the sample from Analyze, and this line will name the fault that repeats.';
+  root.innerHTML = `
+    <div class="card">
+      <div class="row-between">
+        <h3 style="margin:0;">Practice</h3>
+        <span class="pill">${streak} day streak</span>
+      </div>
+      <p style="color:var(--muted);">${escapeHtml(focus)}</p>
+    </div>
+    <div class="card">
+      <h3>Technique cues</h3>
+      ${TECHNIQUES.map(t => `
+        <details class="tech-card">
+          <summary><strong>${escapeHtml(t.title)}</strong></summary>
+          <ul>${t.cues.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>
+        </details>`).join('')}
+    </div>
+    <div class="card">
+      <h3>Drills</h3>
+      <p style="color:var(--muted); margin-top:0;">Suggested drills match faults that keep showing up. The rest of the book is always here.</p>
+      ${DRILLS.map(d => `
+        <article class="drill-card ${doneToday.has(d.id) ? 'done' : ''}">
+          <div class="row-between">
+            <h4>${escapeHtml(d.title)}</h4>
+            <span>${focusIds.includes(d.id) && Object.keys(issues).length ? '<span class="pill">Suggested</span>' : ''}<span class="pill">${d.minutes} min</span></span>
+          </div>
+          <div style="color:var(--muted); font-size:0.85rem;">${escapeHtml(d.focus)}</div>
+          <ol>${d.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>
+          <button type="button" class="secondary drill-toggle" data-drill="${d.id}" aria-pressed="${doneToday.has(d.id)}">${doneToday.has(d.id) ? 'Done today' : 'Mark done today'}</button>
+        </article>`).join('')}
+    </div>
+    <div class="card">
+      <h3>This week</h3>
+      ${buildWeekPlan(issues).map(p => `<div class="plan-row"><strong>${escapeHtml(p.day)}</strong> — ${escapeHtml(p.drill)}</div>`).join('')}
+    </div>`;
+  root.querySelectorAll('.drill-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const fresh = readJSON(STORAGE_KEYS.drills, {});
+      const set = new Set(fresh[today] || []);
+      if (set.has(btn.dataset.drill)) set.delete(btn.dataset.drill);
+      else set.add(btn.dataset.drill);
+      fresh[today] = [...set];
+      writeJSON(STORAGE_KEYS.drills, fresh);
+      renderPractice();
+    });
+  });
+}
 
 // ---------- Profile ----------
 async function loadUserProfile() {
-  if (!currentUser) { userProfile = null; return null; }
+  if (!currentUser || !supabase || !cloudReady) { userProfile = null; return null; }
   const { data, error } = await supabase.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
-  if (error) { console.error(error); return null; }
+  if (error) return null;
   userProfile = data;
   return data;
 }
@@ -1731,17 +1871,19 @@ async function loadUserProfile() {
 async function renderProfile() {
   const loggedOut = document.getElementById('profileLoggedOut');
   const content = document.getElementById('profileContent');
-  if (!currentUser) { loggedOut.style.display = 'block'; content.style.display = 'none'; return; }
-  loggedOut.style.display = 'none'; content.style.display = 'block';
-
-  await cleanupOldMatches();
-  await loadUserProfile();
-  if (userProfile) {
-    document.getElementById('profileUsername').value = userProfile.username || '';
-    document.getElementById('profileLevel').value = userProfile.playing_level || 'beginner';
-    document.getElementById('profileHand').value = userProfile.handedness || 'right';
-    document.getElementById('profileLeaderboardOptIn').checked = !!userProfile.leaderboard_opt_in;
-  }
+  loggedOut.style.display = currentUser ? 'none' : 'block';
+  content.style.display = 'block';
+  if (currentUser && cloudReady) await cleanupOldMatches();
+  if (currentUser) await loadUserProfile();
+  const source = userProfile || loadLocalProfile();
+  document.getElementById('profileUsername').value = source.username || '';
+  document.getElementById('profileLevel').value = source.playing_level || 'beginner';
+  document.getElementById('profileHand').value = source.handedness || 'right';
+  document.getElementById('profileLeaderboardOptIn').checked = !!source.leaderboard_opt_in;
+  const note = document.getElementById('profileCloudNote');
+  if (note) note.textContent = currentUser && cloudReady
+    ? 'Saved to your account and this device.'
+    : 'Saved on this device. Sign in when cloud sync is up to share it.';
   renderPersonalBests();
   renderBadges();
   renderMatchHistory();
@@ -1749,7 +1891,7 @@ async function renderProfile() {
 
 // ---------- Match history + retention cleanup ----------
 async function cleanupOldMatches() {
-  if (!currentUser) return;
+  if (!currentUser || !supabase || !cloudReady) return;
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - 3);
   await supabase
@@ -1762,13 +1904,7 @@ async function cleanupOldMatches() {
 
 async function renderMatchHistory() {
   const box = document.getElementById('matchHistoryBox');
-  if (!currentUser) return;
-  const { data } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .eq('session_type', 'match')
-    .order('created_at', { ascending: false });
+  const data = (await getMySessions()).filter(s => s.session_type === 'match' && !s.sample);
 
   if (!data || data.length === 0) {
     box.innerHTML = '<p style="color:var(--muted); margin:0;">No matches logged yet. When you analyze a video and mark it as a Match, it will appear here.</p>';
@@ -1800,27 +1936,30 @@ async function renderMatchHistory() {
 
 document.addEventListener('click', async (e) => {
   if (e.target && e.target.id === 'saveProfileBtn') {
-    if (!currentUser) return;
     const payload = {
-      id: currentUser.id,
       username: document.getElementById('profileUsername').value.trim(),
       playing_level: document.getElementById('profileLevel').value,
       handedness: document.getElementById('profileHand').value,
       leaderboard_opt_in: document.getElementById('profileLeaderboardOptIn').checked
     };
-    const { error } = await supabase.from('profiles').upsert(payload);
-    document.getElementById('profileSaveStatus').textContent = error ? ('Error: ' + error.message) : 'Saved.';
-    if (!error) userProfile = payload;
+    saveLocalProfile({ ...loadLocalProfile(), ...payload });
+    const status = document.getElementById('profileSaveStatus');
+    if (currentUser && supabase && cloudReady) {
+      const { error } = await supabase.from('profiles').upsert({ id: currentUser.id, ...payload });
+      status.textContent = error ? ('Saved on this device. Cloud: ' + error.message) : 'Saved.';
+      if (!error) userProfile = { id: currentUser.id, ...payload };
+    } else {
+      status.textContent = 'Saved on this device.';
+    }
   }
 });
 
 // ---------- Personal best celebration ----------
 async function checkPersonalBests(newEvents) {
-  if (!currentUser) return;
   if (!cachedPBs) {
-    const { data } = await supabase.from('sessions').select('events').eq('user_id', currentUser.id);
+    const data = (await getMySessions()).filter(s => !s.sample);
     cachedPBs = {};
-    (data || []).forEach(s => (s.events || []).forEach(e => {
+    data.forEach(s => (s.events || []).forEach(e => {
       if (!cachedPBs[e.type] || e.speedEst > cachedPBs[e.type]) cachedPBs[e.type] = e.speedEst;
     }));
   }
@@ -1844,8 +1983,7 @@ async function checkPersonalBests(newEvents) {
 // ---------- Personal bests display ----------
 async function renderPersonalBests() {
   const box = document.getElementById('personalBestsBox');
-  if (!currentUser) return;
-  const { data } = await supabase.from('sessions').select('events').eq('user_id', currentUser.id);
+  const data = (await getMySessions()).filter(s => !s.sample);
   if (!data || data.length === 0) { box.innerHTML = '<div class="empty-state"><div class="emoji">🏅</div><div class="msg">No personal bests yet</div><div class="hint">Analyze a session and your top speeds per shot type will appear here.</div></div>'; return; }
   const bests = {};
   data.forEach(s => {
@@ -1863,25 +2001,12 @@ async function renderPersonalBests() {
 // ---------- Badges & streaks ----------
 async function renderBadges() {
   const box = document.getElementById('badgesBox');
-  if (!currentUser) return;
-  const { data } = await supabase.from('sessions').select('created_at').eq('user_id', currentUser.id).order('created_at', { ascending: false });
-  if (!data || data.length === 0) { box.innerHTML = '<div class="empty-state"><div class="emoji">🎖</div><div class="msg">No badges yet</div><div class="hint">Analyze your first session to earn your first badge.</div></div>'; return; }
-
+  const data = (await getMySessions()).filter(s => !s.sample);
+  const log = readJSON(STORAGE_KEYS.drills, {});
+  const drillDays = Object.keys(log).filter(k => (log[k] || []).length);
   const totalSessions = data.length;
-  const dates = data.map(s => new Date(s.created_at).toDateString());
-  const uniqueDates = [...new Set(dates)];
-
-  // streak: consecutive days ending at today or yesterday
-  let streak = 0;
-  const today = new Date(); today.setHours(0,0,0,0);
-  let cursor = new Date(today);
-  const dateSet = new Set(uniqueDates);
-  while (dateSet.has(cursor.toDateString())) { streak++; cursor.setDate(cursor.getDate() - 1); }
-  if (streak === 0) {
-    // maybe streak ended yesterday
-    cursor = new Date(today); cursor.setDate(cursor.getDate() - 1);
-    while (dateSet.has(cursor.toDateString())) { streak++; cursor.setDate(cursor.getDate() - 1); }
-  }
+  const streak = consecutiveStreak([...data.map(s => dayKey(s.created_at)), ...drillDays]);
+  if (totalSessions === 0 && streak === 0) { box.innerHTML = '<div class="empty-state"><div class="emoji">🎖</div><div class="msg">No badges yet</div><div class="hint">Analyze a session or mark a drill done to start a streak.</div></div>'; return; }
 
   const badges = [];
   if (totalSessions >= 1) badges.push({ icon: '🎾', label: 'First Serve', desc: 'Analyzed your first session' });
@@ -1917,6 +2042,10 @@ async function renderBadges() {
 async function loadLeaderboard() {
   const list = document.getElementById('leaderboardList');
   const shot = document.getElementById('leaderboardShot').value;
+  if (!supabase || !cloudReady) {
+    list.innerHTML = `<div class="empty-state"><div class="msg">Leaderboard is offline</div><div class="hint">It comes back when cloud sync is available. Personal bests on this device are in Profile.</div></div>`;
+    return;
+  }
   list.innerHTML = 'Loading...';
 
   // fetch opted-in profiles + their sessions
@@ -1953,33 +2082,6 @@ document.addEventListener('change', (e) => {
   if (e.target && e.target.id === 'leaderboardShot') loadLeaderboard();
 });
 
-// ---------- Consistency score helper ----------
-function calcConsistency(speeds) {
-  if (speeds.length < 2) return null;
-  const mean = speeds.reduce((a,b) => a+b, 0) / speeds.length;
-  const variance = speeds.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / speeds.length;
-  const stdev = Math.sqrt(variance);
-  // convert to 0-100 score: lower stdev relative to mean = higher consistency
-  const cv = stdev / mean; // coefficient of variation
-  return Math.max(0, Math.min(100, Math.round(100 - cv * 200)));
-}
-
-function gradeSpeed(shot, avgMph) {
-  // rough thresholds — adjust by shot type
-  const thresholds = {
-    'Serve / Overhead': [80, 65, 50, 35],
-    'Forehand': [65, 50, 40, 30],
-    'Backhand': [55, 45, 35, 25],
-    'Volley': [45, 35, 28, 20]
-  };
-  const t = thresholds[shot] || [60, 45, 35, 25];
-  if (avgMph >= t[0]) return 'A';
-  if (avgMph >= t[1]) return 'B';
-  if (avgMph >= t[2]) return 'C';
-  if (avgMph >= t[3]) return 'D';
-  return 'F';
-}
-
 // ---------- Slow-mo scrub button wiring ----------
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('speed-btn')) {
@@ -1998,65 +2100,16 @@ document.addEventListener('click', (e) => {
     courtCalibMode = true;
     document.getElementById('courtCalibStatus').textContent = 'Click near-left corner…';
     calibDots.forEach(d => d.remove());
+    updateOverlayPointer();
   }
   if (e.target.id === 'resetCourtCalib') {
     courtCorners = [];
     courtCalibMode = false;
     document.getElementById('courtCalibStatus').textContent = '';
+    updateOverlayPointer();
     renderCourtHeatmap();
   }
 });
-
-// hook into existing overlay click for court corners
-overlay.addEventListener('click', (e) => {
-  if (!courtCalibMode) return;
-  const rect = overlay.getBoundingClientRect();
-  const nx = (e.clientX - rect.left) / rect.width;
-  const ny = (e.clientY - rect.top) / rect.height;
-  courtCorners.push({ x: nx, y: ny });
-  const labels = ['near-right', 'far-right', 'far-left', 'done'];
-  if (courtCorners.length < 4) {
-    document.getElementById('courtCalibStatus').textContent = `Click ${labels[courtCorners.length-1]} corner…`;
-  } else {
-    document.getElementById('courtCalibStatus').textContent = 'Court calibrated.';
-    courtCalibMode = false;
-    renderCourtHeatmap();
-  }
-});
-
-
-function segmentRallies(motionSamples, events) {
-  if (motionSamples.length === 0) return events.length > 0 ? [{ start: 0, end: 999, shots: events }] : [];
-  const motions = motionSamples.map(m => m.motion);
-  const maxMotion = Math.max(...motions);
-  const threshold = maxMotion * 0.08; // 8% of peak = "quiet" (between rallies)
-  const gapDuration = 2.0; // seconds of quiet = rally boundary
-
-  const rallies = [];
-  let rallyStart = motionSamples[0].time;
-  let quietStart = null;
-
-  motionSamples.forEach((s, i) => {
-    if (s.motion < threshold) {
-      if (quietStart === null) quietStart = s.time;
-    } else {
-      if (quietStart !== null && s.time - quietStart > gapDuration) {
-        // close previous rally
-        rallies.push({ start: rallyStart, end: quietStart });
-        rallyStart = s.time;
-      }
-      quietStart = null;
-    }
-  });
-  rallies.push({ start: rallyStart, end: motionSamples[motionSamples.length-1].time });
-
-  // attach shots to their rally
-  rallies.forEach(r => {
-    r.shots = events.filter(e => e.time >= r.start && e.time <= r.end);
-  });
-  // drop rallies with 0 shots
-  return rallies.filter(r => r.shots.length > 0);
-}
 
 // ---------- Contact zone heatmap ----------
 // The user clicks 4 corners of the court in the video (baseline-left, baseline-right,
@@ -2094,34 +2147,11 @@ function renderCourtHeatmap() {
   svg.innerHTML = content;
 }
 
-function mapToCourt(u, v, corners, W, H) {
-  // treat the 4 corners as: 0=near-left, 1=near-right, 2=far-right, 3=far-left
-  // bilinear interpolation to solve for (s,t) where s=horizontal, t=depth
-  // simple projective approximation: find (s,t) such that
-  //   P(s,t) = (1-t)((1-s)*C0 + s*C1) + t*((1-s)*C3 + s*C2)
-  // rather than iterating, do a simple estimate:
-  // horizontal fraction from left edge (interp of top and bottom baselines)
-  // vertical fraction from near to far baseline
-  // this is imperfect but useable for a rough heatmap
-  const nearLeft = corners[0], nearRight = corners[1], farRight = corners[2], farLeft = corners[3];
-  // vertical position: distance from near baseline vs. far baseline
-  const nearMidY = (nearLeft.y + nearRight.y) / 2;
-  const farMidY = (farLeft.y + farRight.y) / 2;
-  const t = Math.max(0, Math.min(1, (v - nearMidY) / (farMidY - nearMidY || 1)));
-  // horizontal
-  const leftX = nearLeft.x + t * (farLeft.x - nearLeft.x);
-  const rightX = nearRight.x + t * (farRight.x - nearRight.x);
-  const s = Math.max(0, Math.min(1, (u - leftX) / (rightX - leftX || 1)));
-  return { x: s * W, y: t * H };
-}
-
 // ---------- Comparison (Dashboard) ----------
 async function loadComparisonOptions() {
-  if (!currentUser) return;
-  const { data } = await supabase.from('sessions').select('id, created_at, shot_count, avg_speed, top_speed, main_shot, events')
-    .eq('user_id', currentUser.id).order('created_at', { ascending: false });
+  const data = await getMySessions();
   window._compareSessions = data || [];
-  const options = (data || []).map((s, i) => `<option value="${s.id}">Session ${i+1} — ${new Date(s.created_at).toLocaleDateString()} (${s.shot_count} shots)</option>`).join('');
+  const options = (data || []).map((s, i) => `<option value="${escapeHtml(s.id)}">Session ${i+1} — ${new Date(s.created_at).toLocaleDateString()} (${s.shot_count} shots)${s.sample ? ' · sample' : ''}</option>`).join('');
   const selA = document.getElementById('compareA');
   const selB = document.getElementById('compareB');
   if (selA) selA.innerHTML = '<option value="">Select session A...</option>' + options;
@@ -2176,7 +2206,7 @@ function stepFrame(direction) {
 
 // ---------- Comments and Follows on community ----------
 async function toggleFollow(targetUserId, btn) {
-  if (!currentUser) { alert('Sign in to follow players.'); return; }
+  if (!currentUser || !supabase || !cloudReady) { showToast('Sign in while cloud sync is available to follow players.'); return; }
   const { data: existing } = await supabase.from('follows').select().eq('follower_id', currentUser.id).eq('following_id', targetUserId).maybeSingle();
   if (existing) {
     await supabase.from('follows').delete().eq('follower_id', currentUser.id).eq('following_id', targetUserId);
@@ -2188,7 +2218,7 @@ async function toggleFollow(targetUserId, btn) {
 }
 
 async function addComment(sessionId, inputEl, listEl) {
-  if (!currentUser) { alert('Sign in to comment.'); return; }
+  if (!currentUser || !supabase || !cloudReady) { showToast('Sign in while cloud sync is available to comment.'); return; }
   const content = inputEl.value.trim();
   if (!content) return;
   const username = userProfile ? userProfile.username : currentUser.email.split('@')[0];
@@ -2212,6 +2242,38 @@ const reviewCard = document.getElementById('reviewCard');
 const video = document.getElementById('video');
 const overlay = document.getElementById('overlay');
 const ctx = overlay.getContext('2d');
+function updateOverlayPointer() {
+  const placingLine = calibPoints.length < 2 && !calibSkipped;
+  overlay.classList.toggle('interactive', placingLine || tagMode || courtCalibMode);
+}
+overlay.addEventListener('click', (e) => {
+  if (!courtCalibMode) return;
+  const rect = overlay.getBoundingClientRect();
+  const nx = (e.clientX - rect.left) / rect.width;
+  const ny = (e.clientY - rect.top) / rect.height;
+  courtCorners.push({ x: nx, y: ny });
+  const labels = ['near-right', 'far-right', 'far-left', 'done'];
+  if (courtCorners.length < 4) {
+    document.getElementById('courtCalibStatus').textContent = `Click ${labels[courtCorners.length - 1]} corner…`;
+  } else {
+    document.getElementById('courtCalibStatus').textContent = 'Court calibrated.';
+    courtCalibMode = false;
+    renderCourtHeatmap();
+  }
+  updateOverlayPointer();
+});
+document.getElementById('playPauseBtn').addEventListener('click', () => {
+  if (!video.src) return;
+  if (video.paused) video.play();
+  else video.pause();
+});
+document.getElementById('loadSampleBtn').addEventListener('click', () => {
+  const list = loadLocalSessions().filter(s => s.id !== 'sample-rally');
+  saveLocalSessions([buildSampleSession(), ...list]);
+  loadSessions();
+  showTab('dashboard');
+  showToast('Sample rally saved on this device. Delete it any time.');
+});
 const ballCanvas = document.getElementById('ballCanvas');
 const ballCtx = ballCanvas.getContext('2d');
 const popup = document.getElementById('popup');
@@ -2255,12 +2317,14 @@ resetCalibBtn.addEventListener('click', () => {
   calibDots.forEach(d => d.remove());
   calibDots = [];
   if (calibPreviewLine) { calibPreviewLine.remove(); calibPreviewLine = null; }
+  updateOverlayPointer();
 });
 
 skipCalibBtn.addEventListener('click', () => {
   calibSkipped = true;
   pxPerFoot = null;
   analysisStatus.textContent = 'Calibration skipped — speeds will be rough relative estimates only.';
+  updateOverlayPointer();
 });
 
 overlay.addEventListener('mousemove', (e) => {
@@ -2333,6 +2397,7 @@ overlay.addEventListener('click', (e) => {
     pxPerFoot = pxDist / feet;
     calibSkipped = false;
     analysisStatus.textContent = `Calibrated: ${pxPerFoot.toFixed(1)} px/ft. Ready to analyze.`;
+    updateOverlayPointer();
   }
 });
 
@@ -2343,6 +2408,9 @@ let analyzing = false;
 let rafId = null;
 
 uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+});
 uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
 uploadZone.addEventListener('drop', e => {
@@ -2379,6 +2447,7 @@ function loadVideo(file) {
   playerColorSig = null;
   lastTrackedPos = null;
   tagMode = false;
+  updateOverlayPointer();
   if (document.getElementById('playerIdBanner')) document.getElementById('playerIdBanner').style.display = 'block';
   if (document.getElementById('playerIdStatus')) document.getElementById('playerIdStatus').textContent = '';
   video.onloadedmetadata = () => {
@@ -2404,22 +2473,28 @@ async function ensurePoseModel() {
   if (poseLandmarker) return;
   analysisStatus.innerHTML = '<span class="spinner"></span>Loading pose model (first time only)…';
   try {
+    await loadVision();
     const vision = await FilesetResolver.forVisionTasks(
       "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
     );
     const multiOn = document.getElementById('multiPlayerToggle').checked;
-    poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+    const options = (delegate) => ({
       baseOptions: {
         modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
-        delegate: "GPU"
+        delegate
       },
       runningMode: "VIDEO",
       numPoses: multiOn ? 2 : 1
     });
+    try {
+      poseLandmarker = await PoseLandmarker.createFromOptions(vision, options("GPU"));
+    } catch (gpuErr) {
+      poseLandmarker = await PoseLandmarker.createFromOptions(vision, options("CPU"));
+    }
     drawingUtils = new DrawingUtils(ctx);
     analysisStatus.innerHTML = '<span class="spinner"></span>Model loaded. Analyzing…';
   } catch (err) {
-    analysisStatus.innerHTML = `<div class="error-toast">⚠️ Could not load the pose model — check your internet connection and try again. (${err.message})</div>`;
+    analysisStatus.innerHTML = `<div class="error-toast">Could not load the pose model. Check your connection and try again.</div>`;
     throw err;
   }
 }
@@ -2439,8 +2514,8 @@ function detectBall(videoEl) {
 
   let sumX = 0, sumY = 0, count = 0;
 
-  for (let py = 0; py < h; py++) {
-    for (let px = 0; px < w; px++) {
+  for (let py = 0; py < h; py += 2) {
+    for (let px = 0; px < w; px += 2) {
       const idx = (py * w + px) * 4;
       const r = frame[idx], g = frame[idx+1], b = frame[idx+2];
       // tennis ball yellow-green: high R+G, lower B, G slightly dominant
@@ -2484,7 +2559,7 @@ analyzeBtn.addEventListener('click', async () => {
   feedbackList.innerHTML = '';
   try {
     await ensurePoseModel();
-  } catch { analyzeBtn.disabled = false; analyzeBtn.textContent = '▶ Analyze Video'; return; }
+  } catch { analyzeBtn.disabled = false; analyzeBtn.textContent = 'Analyze video'; return; }
 
   video.currentTime = 0;
   video.muted = true;
@@ -2493,7 +2568,7 @@ analyzeBtn.addEventListener('click', async () => {
   } catch (err) {
     analysisStatus.innerHTML = `<div class="error-toast">⚠️ Couldn't play this video (${err.message}). Try a different file — MP4 with H.264 codec works best.</div>`;
     analyzeBtn.disabled = false;
-    analyzeBtn.textContent = '▶ Analyze Video';
+    analyzeBtn.textContent = 'Analyze video';
     return;
   }
 
@@ -2506,6 +2581,8 @@ analyzeBtn.addEventListener('click', async () => {
   let lastBall = null;
   let lastBallTime = 0;
   let motionSamples = []; // {time, motion}
+  const tagCanvas = document.createElement('canvas');
+  const tagCtx = tagCanvas.getContext('2d', { willReadFrequently: true });
 
   function loop() {
     if (video.paused || video.ended) {
@@ -2556,11 +2633,12 @@ analyzeBtn.addEventListener('click', async () => {
       // Preferred method: combine color signature + position continuity (set during "tag yourself" flow)
       if (playerColorSig && result.landmarks.length > 1) {
         const w = video.videoWidth, h = video.videoHeight;
-        const sampleCanvas = document.createElement('canvas');
-        sampleCanvas.width = w; sampleCanvas.height = h;
-        const sctx = sampleCanvas.getContext('2d', { willReadFrequently: true });
-        sctx.drawImage(video, 0, 0);
-        const frameData = sctx.getImageData(0, 0, w, h);
+        if (tagCanvas.width !== w || tagCanvas.height !== h) {
+          tagCanvas.width = w;
+          tagCanvas.height = h;
+        }
+        tagCtx.drawImage(video, 0, 0);
+        const frameData = tagCtx.getImageData(0, 0, w, h);
 
         // Score each pose: lower = better (combines color + position)
         let best = { score: Infinity, pose: lm };
@@ -2649,7 +2727,7 @@ analyzeBtn.addEventListener('click', async () => {
         if (wristPxPerSec > overlay.width * 1.2) {
           cooldown = 0.6;
 
-          const shotType = classifyShot(racketWrist, racketShoulder, hip, dx, dy);
+          const shotType = classifyShot(racketWrist, racketShoulder, hip, dx, dy, currentHandedness());
           shotCounts[shotType] = (shotCounts[shotType] || 0) + 1;
 
           const speedMph = currentBallSpeedMph !== null
@@ -2680,7 +2758,7 @@ analyzeBtn.addEventListener('click', async () => {
           const note = generateFeedback(shotType, {
             wrist: racketWrist, elbow: racketElbow, shoulder: racketShoulder,
             offShoulder, hip, offHip, frontKnee, frontAnkle, nose
-          });
+          }, currentLevel());
           const sourceTag = currentBallSpeedMph !== null ? '' : ' (ball not detected — estimate)';
           events.push({
             time: video.currentTime,
@@ -2721,101 +2799,11 @@ analyzeBtn.addEventListener('click', async () => {
   rafId = requestAnimationFrame(loop);
 });
 
-function angleAt(a, b, c) {
-  // returns angle in degrees at point b, formed by points a-b-c
-  const ab = { x: a.x - b.x, y: a.y - b.y };
-  const cb = { x: c.x - b.x, y: c.y - b.y };
-  const dot = ab.x * cb.x + ab.y * cb.y;
-  const magAB = Math.sqrt(ab.x*ab.x + ab.y*ab.y);
-  const magCB = Math.sqrt(cb.x*cb.x + cb.y*cb.y);
-  if (magAB === 0 || magCB === 0) return 0;
-  const cos = Math.max(-1, Math.min(1, dot / (magAB * magCB)));
-  return Math.acos(cos) * (180 / Math.PI);
-}
-
-function classifyShot(wrist, shoulder, hip, dx, dy) {
-  const aboveShoulder = wrist.y < shoulder.y;
-  const movingUp = dy < 0;
-  if (aboveShoulder && movingUp) return 'Serve / Overhead';
-  const handedness = (userProfile && userProfile.handedness) || 'right';
-  // for right-handers: forehand goes across body left-to-right (dx > 0)
-  // for left-handers: mirror
-  const forehandDx = handedness === 'left' ? dx < 0 : dx > 0;
-  const backhandDx = handedness === 'left' ? dx > 0 : dx < 0;
-  if (forehandDx && Math.abs(wrist.x - hip.x) > 0.05) return 'Forehand';
-  if (backhandDx) return 'Backhand';
-  return 'Volley';
-}
-
-function generateFeedback(type, lm) {
-  const { wrist, elbow, shoulder, offShoulder, hip, offHip, frontKnee, frontAnkle, nose } = lm;
-  const issues = [];
-  const positives = [];
-
-  // 1. Contact point: how far in front of the hip the racket wrist is (forward = good, except serve)
-  const contactForward = Math.abs(wrist.x - hip.x);
-
-  // 2. Elbow extension at contact (straighter arm generally = more reach/power, very bent = cramped)
-  const elbowAngle = angleAt(shoulder, elbow, wrist);
-
-  // 3. Shoulder rotation: how open the shoulder line is relative to the hip line
-  const shoulderTilt = Math.abs(shoulder.y - offShoulder.y);
-  const hipTilt = Math.abs(hip.y - offHip.y);
-  const rotationGap = Math.abs(shoulderTilt - hipTilt);
-
-  // 4. Front knee bend: angle at the knee (closer to 180 = straight leg, lower = bent/loaded)
-  const kneeAngle = angleAt(hip, frontKnee, frontAnkle);
-
-  // 5. Balance: head (nose) position relative to the midpoint between hips — leaning far off-center suggests poor balance
-  const hipMidX = (hip.x + offHip.x) / 2;
-  const headOffset = Math.abs(nose.x - hipMidX);
-
-  if (type === 'Serve / Overhead') {
-    const contactHeight = hip.y - wrist.y;
-    if (contactHeight > 0.32) positives.push('good extension on contact');
-    else issues.push('try contacting the ball higher, at full reach, rather than dropping the racket arm early');
-
-    if (elbowAngle < 140) issues.push('arm looks bent at contact — focus on fully extending up through the ball');
-
-    if (kneeAngle > 165) issues.push('legs look fairly straight at contact — driving up more from the knees can add power');
-  }
-  else if (type === 'Forehand') {
-    if (contactForward > 0.15) positives.push('solid contact point out in front of the body');
-    else issues.push('contact looks late/close to the body — try meeting the ball further out in front');
-
-    if (rotationGap < 0.02) issues.push('shoulders look fairly square to the net — more hip/shoulder rotation on the backswing can add power');
-
-    if (elbowAngle < 100) issues.push('arm looks quite cramped through contact — give the swing a bit more room to extend');
-
-    if (headOffset > 0.12) issues.push('head/upper body drifting off-balance through the shot — try staying more centered over your base');
-  }
-  else if (type === 'Backhand') {
-    if (contactForward > 0.12) positives.push('good contact point ahead of the body');
-    else issues.push('contact point looks a little late — try preparing the racket earlier');
-
-    if (kneeAngle > 170) issues.push('front leg looks quite straight — a little more knee bend can help with balance and power');
-
-    issues.push('check that your follow-through finishes high and extended, not cut short');
-  }
-  else { // Volley
-    if (elbowAngle < 130) positives.push('compact, controlled swing — good for a volley');
-    else issues.push('swing looks a bit long for a volley — try a shorter, punchier motion');
-
-    if (headOffset > 0.1) issues.push('try keeping your head/balance steadier through contact');
-  }
-
-  if (positives.length === 0 && issues.length === 0) {
-    return 'shot looks mechanically solid';
-  }
-  const combined = [...positives.slice(0,1), ...issues.slice(0,2)];
-  return combined.join('; ');
-}
-
 function finishAnalysis(speeds, shotCounts, motionSamples) {
   cancelAnimationFrame(rafId);
   analyzing = false;
   analyzeBtn.disabled = false;
-  analyzeBtn.textContent = '▶ Analyze Video';
+  analyzeBtn.textContent = 'Analyze video';
   popup.style.display = 'none';
 
   // ---- Rally segmentation ----
@@ -2858,15 +2846,14 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
   checkPersonalBests(events);
 
   const reportCardEl = document.getElementById('reportCard');
-  if (reportCardEl) reportCardEl.innerHTML = reportRows;
+  if (reportCardEl) reportCardEl.innerHTML = `<p class="plan-row">${escapeHtml(focusLine(events))}</p>` + reportRows;
 
-  track('video_analyzed', { shots: events.length, top: speeds.length ? Math.round(Math.max(...speeds)) : 0, sessionType });
-
-  // capture current UI values for match info
   matchOpponent = document.getElementById('matchOpponent') ? document.getElementById('matchOpponent').value : '';
   matchScore = document.getElementById('matchScore') ? document.getElementById('matchScore').value : '';
   const selectedType = document.querySelector('input[name="sessionType"]:checked');
   sessionType = selectedType ? selectedType.value : 'practice';
+
+  track('video_analyzed', { shots: events.length, top: speeds.length ? Math.round(Math.max(...speeds)) : 0, sessionType });
 
   saveSessionToSupabase({
     shotCount: events.length,
@@ -3076,6 +3063,7 @@ async function startTagging() {
   status.textContent = 'Loading pose model…';
   await ensurePoseModel();
   tagMode = true;
+  updateOverlayPointer();
   overlay.style.cursor = 'crosshair';
   status.innerHTML = '<span style="color:var(--lime);">Pause on a clear frame, then click yourself in the video →</span>';
 }
@@ -3130,6 +3118,7 @@ async function handleTagClick(e) {
   drawingUtils.drawConnectors(best.lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#c4e538', lineWidth: 3 });
 
   tagMode = false;
+  updateOverlayPointer();
   overlay.style.cursor = '';
   status.innerHTML = '<span style="color:var(--lime);">✓ Tagged! Click "Start tagging" again to retag if wrong.</span>';
 }
@@ -3266,6 +3255,10 @@ async function loadSharedSessionFromUrl() {
   const params = new URLSearchParams(location.search);
   const shareId = params.get('share');
   if (!shareId) return;
+  if (!supabase || !cloudReady) {
+    showToast('Shared sessions need cloud sync, and it is offline right now.', 4000);
+    return;
+  }
   const { data, error } = await supabase.from('sessions').select('*').eq('id', shareId).eq('is_public', true).maybeSingle();
   if (error || !data) {
     showToast('This shared session is private or no longer available.', 4000);

@@ -1,13 +1,14 @@
 {
+  "id": "./",
   "name": "AI Tennis Coach",
   "short_name": "Tennis Coach",
-  "description": "Free AI tennis coaching in your browser — upload footage, get instant coaching feedback, shot classification, and speed tracking.",
-  "start_url": "app.html",
-  "scope": "/",
+  "description": "Free tennis coach in your browser. Film a rally, get shot-by-shot feedback, and keep your progress on this device.",
+  "start_url": "./app.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0d1b0f",
-  "theme_color": "#0d1b0f",
+  "background_color": "#07110c",
+  "theme_color": "#07110c",
   "icons": [
     {
       "src": "logo-192.png",
