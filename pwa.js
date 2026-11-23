@@ -30,6 +30,12 @@
 
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").then((reg) => {
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        location.reload();
+      });
       function offerReload() {
         const bar = ensure("updateBar", "update-bar");
         if (!bar.hidden && bar.dataset.ready === "1") return;
@@ -41,7 +47,10 @@
         const button = document.createElement("button");
         button.type = "button";
         button.textContent = "Reload";
-        button.addEventListener("click", () => location.reload());
+        button.addEventListener("click", () => {
+          if (reg.waiting) reg.waiting.postMessage({ type: "skip-waiting" });
+          else location.reload();
+        });
         bar.append(label, button);
       }
       if (reg.waiting && navigator.serviceWorker.controller) offerReload();
