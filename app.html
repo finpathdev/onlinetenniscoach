@@ -1120,7 +1120,7 @@ async function loadSessions() {
         <span class="meta">${date}</span>
       </div>
       <div style="color:var(--muted); font-size:0.82rem; margin-bottom:8px;">
-        avg ${s.avg_speed || "—"} mph &middot; top ${s.top_speed || "—"} mph &middot; mostly ${escapeHtml(s.main_shot || "—")}${s.board && s.board.firstServePct != null ? " · first serve " + s.board.firstServePct + "%" : ""}
+        avg ${Number(s.avg_speed) || "—"} mph &middot; top ${Number(s.top_speed) || "—"} mph &middot; mostly ${escapeHtml(s.main_shot || "—")}${s.board && s.board.firstServePct != null && Number.isFinite(Number(s.board.firstServePct)) ? " · first serve " + Math.round(Number(s.board.firstServePct)) + "%" : ""}
       </div>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
         ${rewatchBtn}
@@ -1150,7 +1150,7 @@ async function loadSessions() {
         matchOpponent = session.match_opponent || '';
         matchScore = session.match_score || '';
       }
-      video.src = signed.signedUrl;
+      setVideoSource(signed.signedUrl);
       currentVideoFile = null; // it's not a local file anymore
       reviewCard.style.display = 'block';
       video.onloadedmetadata = () => {
@@ -1165,9 +1165,9 @@ async function loadSessions() {
         const li = document.createElement('li');
         const m = Math.floor(e.time / 60);
         const sec = Math.floor(e.time % 60).toString().padStart(2, '0');
-        const spinTag = (e.spin && e.spin !== '—') ? ` <span style="color:var(--muted); font-size:0.78rem;">[${e.spin}]</span>` : '';
+        const spinTag = (e.spin && e.spin !== '—') ? ` <span style="color:var(--muted); font-size:0.78rem;">[${escapeHtml(e.spin)}]</span>` : '';
         const pace = e.speedEst == null ? 'speed not measured' : `~${e.speedEst} mph`;
-        li.innerHTML = `<span class="time">${m}:${sec}</span><strong>${e.type}</strong>${spinTag} — ${pace} — ${e.note}`;
+        li.innerHTML = `<span class="time">${m}:${sec}</span><strong>${escapeHtml(e.type)}</strong>${spinTag} — ${pace} — ${escapeHtml(e.note || "")}`;
         li.querySelector('.time').addEventListener('click', () => { video.currentTime = e.time; video.pause(); });
         feedbackList.appendChild(li);
       });
@@ -1676,7 +1676,7 @@ async function loadCommunityFeed() {
     .limit(50);
 
   if (error) {
-    feed.innerHTML = `<div class="error-toast">⚠️ Could not load community feed: ${error.message}</div>`;
+    feed.innerHTML = `<div class="error-toast">Could not load the community feed: ${escapeHtml(error.message || "unknown error")}</div>`;
     return;
   }
   if (!data || data.length === 0) {
@@ -1718,7 +1718,7 @@ async function loadCommunityFeed() {
             ${isSelf ? '' : `<button class="follow-btn" data-target="${s.user_id}" style="padding:4px 12px; font-size:0.78rem;">${isFollowing ? 'Following' : 'Follow'}</button>`}
           </div>
         </div>
-        <div style="margin-top:8px;">${s.shot_count} shots &middot; avg ${s.avg_speed} mph &middot; top ${s.top_speed} mph &middot; mostly ${s.main_shot}</div>
+        <div style="margin-top:8px;">${Number(s.shot_count) || 0} shots &middot; avg ${Number(s.avg_speed) || 0} mph &middot; top ${Number(s.top_speed) || 0} mph &middot; mostly ${escapeHtml(s.main_shot || "—")}</div>
         ${s.caption ? `<p style="margin:8px 0 0; color:var(--text);">${escapeHtml(s.caption)}</p>` : ''}
         <div class="comments-block" style="margin-top:10px;">
           <div class="comments-list" id="cmts-${s.id}"></div>
@@ -2007,8 +2007,8 @@ async function checkPersonalBests(newEvents) {
     }
   });
   if (broken.length > 0) {
-    const msg = broken.map(b => `${b.shot}: ${b.mph} mph${b.prev ? ` (was ${b.prev})` : ''}`).join(' • ');
-    analysisStatus.innerHTML = `🎉 <span style="color:var(--lime); font-weight:600;">Personal best!</span> ${msg}`;
+    const msg = broken.map(b => `${escapeHtml(b.shot)}: ${Number(b.mph)} mph${b.prev ? ` (was ${Number(b.prev)})` : ''}`).join(' • ');
+    analysisStatus.innerHTML = `<span style="color:var(--lime); font-weight:600;">Personal best.</span> ${msg}`;
   }
 }
 
@@ -2026,7 +2026,7 @@ async function renderPersonalBests() {
   });
   const rows = Object.entries(bests).map(([shot, mph]) => `
     <div style="display:flex; justify-content:space-between; background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:8px;">
-      <span>${shot}</span><strong style="color:var(--lime);">${mph} mph</strong>
+      <span>${escapeHtml(shot)}</span><strong style="color:var(--lime);">${Number(mph)} mph</strong>
     </div>`).join('');
   box.innerHTML = rows || '<p style="color:var(--muted);">No shots recorded yet.</p>';
 }
@@ -2578,6 +2578,8 @@ let poseLandmarker = null;
 let drawingUtils = null;
 let events = []; // {time, type, speedEst, note}
 let analyzing = false;
+let analysisAbort = false;
+let analysisGen = 0;
 let rafId = null;
 
 uploadZone.addEventListener('click', () => fileInput.click());
@@ -2596,6 +2598,17 @@ fileInput.addEventListener('change', () => {
 });
 
 let currentVideoFile = null;
+let videoObjectUrl = null;
+let loadGeneration = 0;
+let videoReadyWatch = 0;
+function setVideoSource(url) {
+  if (videoObjectUrl) {
+    URL.revokeObjectURL(videoObjectUrl);
+    videoObjectUrl = null;
+  }
+  if (url && String(url).startsWith("blob:")) videoObjectUrl = url;
+  video.src = url || "";
+}
 async function fileLooksLikeHevc(file) {
   try {
     const slices = [file.slice(0, 65536)];
@@ -2623,15 +2636,19 @@ function browserCanPlayHevc() {
 }
 
 async function loadVideo(file) {
+  const generation = ++loadGeneration;
+  clearTimeout(videoReadyWatch);
   currentVideoFile = file;
   window.__tcTiming.filePickedAt = performance.now();
   if (await fileLooksLikeHevc(file) && !browserCanPlayHevc()) {
+    if (generation !== loadGeneration) return;
     reviewCard.style.display = "block";
     analysisStatus.innerHTML = '<div class="error-toast">This is an iPhone HEVC (H.265) video. Chrome on a computer usually cannot play it, so nothing was loaded. In Photos, export a copy as Most Compatible (H.264 MP4) and upload that. The video never leaves this browser.</div>';
     return;
   }
+  if (generation !== loadGeneration) return;
   const url = URL.createObjectURL(file);
-  video.src = url;
+  setVideoSource(url);
   reviewCard.style.display = 'block';
   statsGrid.style.display = 'none';
   feedbackList.innerHTML = '';
@@ -2662,7 +2679,12 @@ async function loadVideo(file) {
     ballCanvas.width = video.videoWidth;
     ballCanvas.height = video.videoHeight;
   };
+  videoReadyWatch = setTimeout(() => {
+    if (generation !== loadGeneration || video.videoWidth) return;
+    analysisStatus.innerHTML = '<div class="error-toast">This clip has no usable picture. Try a longer H.264 MP4.</div>';
+  }, 4000);
   video.onloadedmetadata = () => {
+    clearTimeout(videoReadyWatch);
     fitCanvas();
     if (window.__tcTiming.filePickedAt) {
       window.__tcTiming.videoReadyMs = Math.round(performance.now() - window.__tcTiming.filePickedAt);
@@ -2677,10 +2699,14 @@ async function loadVideo(file) {
 }
 
 resetBtn.addEventListener('click', () => {
+  analysisAbort = true;
+  stopLiveCues();
   reviewCard.style.display = 'none';
   fileInput.value = '';
   video.pause();
-  video.src = '';
+  setVideoSource("");
+  analyzeBtn.disabled = false;
+  analyzeBtn.textContent = "Analyze video";
 });
 
 window.__tcTiming = { inferMs: 0, inferCount: 0, modelMs: 0, delegate: "", videoReadyMs: 0, analyzeMs: 0 };
@@ -2795,13 +2821,22 @@ function pxToMph(pxPerSec) {
 
 
 analyzeBtn.addEventListener('click', async () => {
+  if (analyzing) {
+    analysisAbort = true;
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = "Stopping…";
+    video.pause();
+    return;
+  }
   if (!video.src) return;
   if (!pxPerFoot) {
     analysisStatus.textContent = 'No court line yet, so ball speed stays blank. Stroke notes still run.';
   }
-  analyzeBtn.disabled = true;
-  analyzeBtn.innerHTML = '<span class="spinner dark"></span>Analyzing…';
+  const gen = ++analysisGen;
+  analyzeBtn.disabled = false;
+  analyzeBtn.textContent = "Stop";
   analyzing = true;
+  analysisAbort = false;
   events = [];
   ballHistory = [];
   ballTrack = [];
@@ -2810,12 +2845,23 @@ analyzeBtn.addEventListener('click', async () => {
   try {
     await ensurePoseModel();
   } catch { analyzeBtn.disabled = false; analyzeBtn.textContent = 'Analyze video'; analyzing = false; return; }
+  if (analysisAbort || gen !== analysisGen) {
+    if (gen === analysisGen) {
+      analyzing = false;
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = "Analyze video";
+      analysisStatus.textContent = "Analysis stopped.";
+    }
+    return;
+  }
 
   if (!video.videoWidth || !video.videoHeight) {
-    analysisStatus.innerHTML = '<div class="error-toast">This video has no picture frames. Try an MP4 (H.264) or MOV.</div>';
-    analyzeBtn.disabled = false;
-    analyzeBtn.textContent = 'Analyze video';
-    analyzing = false;
+    if (gen === analysisGen) {
+      analysisStatus.innerHTML = '<div class="error-toast">This video has no picture frames. Try an MP4 (H.264) or MOV.</div>';
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = 'Analyze video';
+      analyzing = false;
+    }
     return;
   }
   overlay.width = video.videoWidth;
@@ -2831,6 +2877,7 @@ analyzeBtn.addEventListener('click', async () => {
   try {
     await runSteppedAnalysis();
   } catch (err) {
+    if (gen !== analysisGen) return;
     analysisStatus.innerHTML = `<div class="error-toast">Analysis stopped: ${escapeHtml(err.message || 'unknown error')}. A shorter MP4 usually works.</div>`;
     analyzeBtn.disabled = false;
     analyzeBtn.textContent = 'Analyze video';
@@ -3028,9 +3075,13 @@ function commitStrokes(samples, speeds, shotCounts) {
 }
 
 async function runSteppedAnalysis() {
+  const gen = analysisGen;
   const duration = video.duration;
   if (!Number.isFinite(duration) || duration <= 0) {
     throw new Error('the clip has no duration');
+  }
+  if (duration < 0.25) {
+    throw new Error('this clip is shorter than a swing');
   }
   const limit = Math.min(duration, 40);
   const step = limit > 16 ? 1 / 8 : 1 / 12;
@@ -3058,7 +3109,7 @@ async function runSteppedAnalysis() {
   let nextT = 0;
   let stalls = 0;
   let lastTime = -1;
-  while (video.currentTime < limit - 0.03 && !video.ended && stalls < 40) {
+  while (!analysisAbort && gen === analysisGen && video.currentTime < limit - 0.03 && !video.ended && stalls < 40) {
     if (video.currentTime + 0.008 < nextT) {
       if (video.paused) {
         try { await video.play(); } catch (err) { break; }
@@ -3147,6 +3198,15 @@ async function runSteppedAnalysis() {
     }
   }
   video.pause();
+  if (analysisAbort || gen !== analysisGen) {
+    if (gen === analysisGen) {
+      analyzing = false;
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = "Analyze video";
+      analysisStatus.textContent = "Analysis stopped. Nothing from this pass was saved.";
+    }
+    return;
+  }
 
   events.length = 0;
   Object.keys(shotCounts).forEach(k => delete shotCounts[k]);
@@ -3241,7 +3301,7 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
     const grade = avg == null ? '—' : gradeSpeed(shot, avg);
     const consistency = calcConsistency(d.speeds);
     return `<div style="display:grid; grid-template-columns: 1fr auto auto auto; gap:10px; align-items:center; background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:6px;">
-      <span>${shot}</span>
+      <span>${escapeHtml(shot)}</span>
       <span style="color:var(--muted); font-size:0.82rem;">${d.count} shots</span>
       <span style="color:var(--muted); font-size:0.82rem;">${consistency !== null ? consistency + '% consistent' : '—'}</span>
       <span style="background:var(--lime); color:#15260f; font-weight:700; padding:4px 10px; border-radius:6px;">${grade} <span style="font-weight:400; font-size:0.78rem;">${avg == null ? 'mph not measured' : '(' + avg + ' mph avg)'}</span></span>
@@ -3278,9 +3338,9 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
     const li = document.createElement('li');
     const m = Math.floor(e.time / 60);
     const s = Math.floor(e.time % 60).toString().padStart(2, '0');
-    const spinTag = (e.spin && e.spin !== '—') ? ` <span style="color:var(--muted); font-size:0.78rem;">[${e.spin}]</span>` : '';
+    const spinTag = (e.spin && e.spin !== '—') ? ` <span style="color:var(--muted); font-size:0.78rem;">[${escapeHtml(e.spin)}]</span>` : '';
     const pace = e.speedEst == null ? 'speed not measured' : `~${e.speedEst} mph`;
-    li.innerHTML = `<span class="time">${m}:${s}</span><strong>${e.type}</strong>${spinTag} — ${pace} — ${e.note}`;
+    li.innerHTML = `<span class="time">${m}:${s}</span><strong>${escapeHtml(e.type)}</strong>${spinTag} — ${pace} — ${escapeHtml(e.note || "")}`;
     li.querySelector('.time').addEventListener('click', () => {
       video.currentTime = e.time;
       video.pause();
@@ -3314,7 +3374,7 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
   // Heatmap
   const heatmapWrap = document.getElementById('heatmapWrap');
   const hasBallPositions = events.some(e => e.ballX != null);
-  if (hasBallPositions) {
+  if (hasBallPositions || courtCorners.length === 4 || (window._bounces || []).length) {
     heatmapWrap.style.display = 'block';
     renderCourtHeatmap();
   } else {
@@ -3353,9 +3413,9 @@ async function openCamera() {
     if (err.name === 'NotAllowedError') msg = "Camera access was denied. Enable it in your browser's site settings and try again.";
     else if (err.name === 'NotFoundError') msg = 'No camera detected on this device.';
     else if (err.name === 'NotReadableError') msg = 'Camera is already in use by another app.';
-    else msg = 'Camera unavailable: ' + err.message;
+    else msg = "Camera unavailable. Check the browser permission and try again.";
     recordCard.style.display = 'block';
-    recordStatus.innerHTML = `<div class="error-toast">⚠️ ${msg}</div>`;
+    recordStatus.textContent = msg;
   }
 }
 
@@ -3467,6 +3527,10 @@ cancelRecordBtn.addEventListener('click', () => {
 const multiPlayerToggle = document.getElementById('multiPlayerToggle');
 const mySideWrap = document.getElementById('mySideWrap');
 multiPlayerToggle.addEventListener('change', async () => {
+  if (analyzing) {
+    multiPlayerToggle.checked = !multiPlayerToggle.checked;
+    return;
+  }
   mySideWrap.style.display = multiPlayerToggle.checked ? 'inline-flex' : 'none';
   // rebuild pose model with numPoses = 2 or 1
   if (poseLandmarker) {
