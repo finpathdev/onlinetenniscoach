@@ -697,3 +697,32 @@ body.landing, body.coach-app { margin: 0; color-scheme: dark; }
 @media (prefers-reduced-motion: no-preference) {
   .capture-card .upload-zone { transition: background .18s ease, border-color .18s ease; }
 }
+
+/* Some legacy fields set their visual styling inline. Keep layout and visibility
+   under those controls while giving app fields a consistent appearance. */
+.coach-app :is(input[type="text"], input[type="email"], input[type="password"], input[type="number"], select, textarea) {
+  min-height: 44px;
+  min-width: 0;
+  padding: 10px 13px !important;
+  border: 1px solid #50705c !important;
+  border-radius: 12px !important;
+  background-color: #12251c !important;
+  color: var(--text) !important;
+  font-size: 1rem !important;
+  line-height: 1.4;
+}
+.coach-app select {
+  padding-inline-end: 32px !important;
+}
+.coach-app .calib-banner input[type="number"] {
+  min-width: min(100%, 88px);
+}
+.coach-app :is(input, textarea)::placeholder {
+  color: #aebfb2;
+  opacity: 1;
+}
+.coach-app :is(input[type="text"], input[type="email"], input[type="password"], input[type="number"], select, textarea):focus {
+  border-color: var(--lime) !important;
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
