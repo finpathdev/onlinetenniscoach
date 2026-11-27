@@ -343,9 +343,22 @@
   #clipHelp li + li { margin-top: 6px; }
   #clipHelp button { min-height: 44px; }
   .match-details[hidden] { display: none; }
-  .match-details:not([hidden]) { display: grid; gap: 7px; }
-  .match-details input, .match-details select { width: 100%; }
-  .match-details small { color: var(--muted); }
+  .match-details:not([hidden]) {
+    display: grid;
+    min-inline-size: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 16px;
+    padding: clamp(14px, 3vw, 22px);
+  }
+  .match-details legend { padding-inline: 6px; color: var(--lime); font-weight: 700; }
+  .match-field { display: grid; align-content: start; gap: 6px; min-width: 0; }
+  .match-field-wide { grid-column: 1 / -1; }
+  .match-field label { color: var(--text); font-size: .9rem; font-weight: 700; }
+  .match-details :is(input, select) { width: 100%; box-sizing: border-box; }
+  .match-details small { color: var(--muted); font-size: .82rem; line-height: 1.45; }
+  @media (max-width: 560px) {
+    .match-details:not([hidden]) { grid-template-columns: minmax(0, 1fr); }
+  }
   #recordGuide li + li { margin-top: 5px; }
 </style>
 <link rel="stylesheet" href="theme.css">
@@ -509,19 +522,25 @@
 
     <fieldset class="calib-banner match-details" id="matchDetails" hidden>
       <legend>Match details</legend>
-      <label for="matchResult">How did the match end?</label>
-      <select id="matchResult" required>
-        <option value="">Choose a result</option>
-        <option>Win</option>
-        <option>Loss</option>
-        <option>Unfinished</option>
-        <option>Unknown</option>
-      </select>
-      <label for="matchScore">Set scores, your score first</label>
-      <input type="text" id="matchScore" maxlength="100" placeholder="e.g. 6-4, 3-6, 10-7" aria-describedby="matchScoreHelp">
-      <small id="matchScoreHelp">Include any match tiebreak. A score is required for a win or loss.</small>
-      <label for="matchOpponent">Opponent or team (optional)</label>
-      <input type="text" id="matchOpponent" maxlength="80">
+      <div class="match-field">
+        <label for="matchResult">How did the match end?</label>
+        <select id="matchResult" required>
+          <option value="">Choose a result</option>
+          <option>Win</option>
+          <option>Loss</option>
+          <option>Unfinished</option>
+          <option>Unknown</option>
+        </select>
+      </div>
+      <div class="match-field">
+        <label for="matchScore">Set scores, your score first</label>
+        <input type="text" id="matchScore" maxlength="100" placeholder="e.g. 6-4, 3-6, 10-7" aria-describedby="matchScoreHelp">
+        <small id="matchScoreHelp">Include any match tiebreak. A score is required for a win or loss.</small>
+      </div>
+      <div class="match-field match-field-wide">
+        <label for="matchOpponent">Opponent or team (optional)</label>
+        <input type="text" id="matchOpponent" maxlength="80" placeholder="Name or team">
+      </div>
     </fieldset>
 
     <div class="calib-banner" id="playerIdBanner" style="display:block;">
