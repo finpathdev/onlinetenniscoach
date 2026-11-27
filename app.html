@@ -342,12 +342,46 @@
   #clipHelp p { margin: 0 0 10px; }
   #clipHelp li + li { margin-top: 6px; }
   #clipHelp button { min-height: 44px; }
-  .nav-break { display: none; }
+  #moreNav { display: none; }
+  #reviewOptions { margin-top: 14px; }
+  #reviewOptions summary { cursor: pointer; color: var(--text); }
   @media (max-width: 760px) {
-    body.coach-app #navBar { flex-wrap: wrap; gap: 6px !important; overflow-x: visible; }
-    body.coach-app #navBar button { flex: 1 1 29%; min-height: 44px; padding-inline: 4px !important; }
-    body.coach-app #navBar button:nth-of-type(n + 4) { flex-basis: 21%; font-size: .75rem !important; }
-    .nav-break { display: block; flex-basis: 100%; height: 0; margin-top: -6px; }
+    body.coach-app #navBar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.22fr) minmax(0, .82fr);
+      gap: 5px !important;
+      overflow: visible;
+    }
+    body.coach-app #navBar > button, #moreNav summary {
+      min-height: 44px;
+      padding-inline: 3px !important;
+      font-size: .8rem !important;
+    }
+    #moreNav { display: block; position: relative; }
+    #moreNav summary { display: grid; place-items: center; cursor: pointer; border: 1px solid var(--stroke); border-radius: 12px; }
+    #moreNav summary::-webkit-details-marker { display: none; }
+    #moreNav summary[aria-current] { border-color: var(--lime); color: var(--lime); }
+    #moreNavItems {
+      position: absolute;
+      inset: calc(100% + 8px) 0 auto auto;
+      display: grid;
+      gap: 6px;
+      width: 154px;
+      padding: 8px;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      background: #12251c;
+      box-shadow: 0 8px 20px #0007;
+    }
+    #moreNavItems button { min-height: 44px; text-align: left; }
+    #reviewActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #reviewActions button, #reviewOptions button, #reviewOptions summary { min-height: 44px; }
+    #analyzeBtn { grid-column: 1 / -1; }
+    #reviewOptions summary { display: flex; align-items: center; }
+    #reviewOptions summary::before { content: "▸"; margin-right: 8px; }
+    #reviewOptions[open] summary::before { content: "▾"; }
+    #reviewOptions .toggle { flex-basis: 100%; margin-block: 4px; }
+    .keyboard-help { display: none; }
   }
   #firstResult { margin: 16px 0 10px; padding: 16px; border: 1px solid var(--lime); border-radius: 12px; background: #16261b; }
   #firstResult[hidden] { display: none; }
@@ -428,11 +462,11 @@
   <button type="button" class="secondary" id="navAnalyze" data-tab="analyze">Analyze</button>
   <button type="button" class="secondary" id="navPractice" data-tab="practice">Practice</button>
   <button type="button" class="secondary" id="navDashboard" data-tab="dashboard">Dashboard</button>
-  <span class="nav-break" aria-hidden="true"></span>
   <button type="button" class="secondary" id="navCommunity" data-tab="community">Community</button>
   <button type="button" class="secondary" id="navLeaderboard" data-tab="leaderboard">Leaderboard</button>
   <button type="button" class="secondary" id="navProfile" data-tab="profile">Profile</button>
   <button type="button" class="secondary" id="navAbout" data-tab="about">About</button>
+  <details id="moreNav"><summary>More</summary><div id="moreNavItems"></div></details>
 </nav>
 <div id="cloudBanner" class="cloud-banner" hidden>
   Cloud sync is offline, so accounts, the community feed, and the leaderboard are paused. Analysis, drills, and progress still save on this device.
@@ -615,10 +649,15 @@
       </div>
     </div>
 
-    <div class="controls">
+    <div class="controls" id="reviewActions">
       <button type="button" id="analyzeBtn">Analyze video</button>
       <button type="button" class="secondary" id="playPauseBtn">Play / pause</button>
-      <button type="button" class="secondary" id="resetBtn">Upload a different video</button>
+      <button type="button" class="secondary" id="resetBtn">Choose another video</button>
+    </div>
+    <section id="firstResult" aria-labelledby="firstResultTitle" hidden></section>
+    <details id="reviewOptions" open>
+      <summary>Playback and overlays</summary>
+      <div class="controls">
       <label class="toggle">
         <input type="checkbox" id="popupToggle" checked>
         Show coaching pop-ups
@@ -649,11 +688,11 @@
       <button class="secondary" id="frameBackBtn" style="padding:4px 10px; font-size:0.78rem;">◀ frame</button>
       <button class="secondary" id="frameFwdBtn" style="padding:4px 10px; font-size:0.78rem;">frame ▶</button>
     </div>
-    <div style="color: var(--muted); font-size: 0.72rem; margin-top: 4px;">
+    <div class="keyboard-help" style="color: var(--muted); font-size: 0.72rem; margin-top: 4px;">
       Keyboard shortcuts: <strong>Space</strong> play/pause · <strong>← →</strong> step frame · <strong>Shift + ← →</strong> jump 5s · <strong>F</strong> fullscreen
     </div>
 
-    <section id="firstResult" aria-labelledby="firstResultTitle" hidden></section>
+    </details>
     <div id="analysisStatus" role="status" style="margin-top:10px; color: var(--muted); font-size: 0.85rem;"></div>
 
     <div id="matchBoard" style="display:none; margin-top:16px;">
@@ -1566,6 +1605,10 @@ function showTab(tab, sharedId = null) {
       btn.setAttribute('aria-current', 'page');
     } else btn.removeAttribute('aria-current');
   });
+  moreNav.open = false;
+  const moreSummary = moreNav.querySelector('summary');
+  if (secondaryNav.some(button => button.dataset.tab === tab)) moreSummary.setAttribute('aria-current', 'true');
+  else moreSummary.removeAttribute('aria-current');
   if (location.hash !== '#' + tab) history.replaceState(null, '', '#' + tab);
   track('tab_view', { tab });
   if (tab === 'practice') renderPractice();
@@ -4166,6 +4209,20 @@ function copySessionLink(sessionId) {
 // Start after all tab state and event handlers have been initialized.
 const shareId = new URLSearchParams(location.search).get('share');
 const initialTab = shareId ? 'community' : location.hash.slice(1);
+const moreNav = document.getElementById('moreNav');
+const moreNavItems = document.getElementById('moreNavItems');
+const secondaryNav = [...moreNav.parentElement.querySelectorAll('button')].slice(3);
+const narrowScreen = matchMedia('(max-width: 760px)');
+function arrangePhoneControls() {
+  moreNav.open = false;
+  for (const button of secondaryNav) {
+    if (narrowScreen.matches) moreNavItems.append(button);
+    else moreNav.before(button);
+  }
+  document.getElementById('reviewOptions').open = !narrowScreen.matches;
+}
+arrangePhoneControls();
+narrowScreen.addEventListener('change', arrangePhoneControls);
 showTab(initialTab);
 loadSessions();
 window.__tcReady = true;
