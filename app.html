@@ -337,6 +337,11 @@
     font-size: 0.85rem;
   }
   .session-item .meta { color: var(--muted); font-size: 0.78rem; }
+  #clipHelp[hidden], #clipLoadStatus[hidden] { display: none; }
+  #clipHelp { margin-top: 12px; }
+  #clipHelp p { margin: 0 0 10px; }
+  #clipHelp li + li { margin-top: 6px; }
+  #clipHelp button { min-height: 44px; }
   .match-details[hidden] { display: none; }
   .match-details:not([hidden]) { display: grid; gap: 7px; }
   .match-details input, .match-details select { width: 100%; }
@@ -442,6 +447,23 @@
     <div class="controls" style="margin-top:12px;">
       <button type="button" class="secondary" id="loadSampleBtn">Preview a sample rally</button>
     </div>
+    <p id="clipLoadStatus" role="status" hidden></p>
+    <div id="clipHelp" class="error-toast" hidden>
+      <p id="clipLoadError" role="alert"></p>
+      <div class="controls">
+        <button type="button" id="retryUploadBtn">Choose another clip</button>
+        <button type="button" class="secondary" id="recordInsteadBtn">Record in LimeCourt</button>
+      </div>
+      <details class="capture-tips">
+        <summary>Use an existing iPhone clip</summary>
+        <ol>
+          <li>Try selecting the clip from <strong>Photo Library</strong> in Safari.</li>
+          <li>If it still won’t open, find it in Photos and tap <strong>Share → Options → Most Compatible → Done</strong>.</li>
+          <li>Tap <strong>Save to Files</strong>, then choose the saved copy in LimeCourt. If it still won’t play, use an H.264 export from your video editor.</li>
+        </ol>
+        <p>For future clips in the iPhone Camera app, use <strong>Settings → Camera → Formats → Most Compatible</strong>.</p>
+      </details>
+    </div>
     <details class="capture-tips">
       <summary>Filming tips for a cleaner track</summary>
       <ul style="margin: 8px 0 0; padding-left: 20px;">
@@ -543,7 +565,7 @@
 
     <div class="video-stage">
       <div class="video-wrap" id="videoWrap">
-        <video id="video" controls playsinline></video>
+        <video id="video" controls playsinline preload="metadata"></video>
         <canvas id="overlay"></canvas>
         <canvas id="ballCanvas"></canvas>
         <div class="popup" id="popup"></div>
@@ -1193,6 +1215,10 @@ async function loadSessions() {
         matchOpponent = session.match_opponent || '';
         matchScore = session.match_score || '';
       }
+      ++loadGeneration;
+      clearTimeout(videoReadyWatch);
+      stopAnalysisForSourceChange();
+      clipHelp.hidden = clipLoadStatus.hidden = true;
       setVideoSource(signed.signedUrl);
       currentVideoFile = null; // it's not a local file anymore
       reviewCard.style.display = 'block';
@@ -2670,7 +2696,14 @@ let analysisPlaybackRate = 1;
 let analysisMuted = false;
 let rafId = null;
 
-uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('click', event => {
+  if (event.target !== fileInput) fileInput.click();
+});
+const clipLoadStatus = document.getElementById('clipLoadStatus');
+const clipHelp = document.getElementById('clipHelp');
+const clipLoadError = document.getElementById('clipLoadError');
+document.getElementById('retryUploadBtn').addEventListener('click', () => fileInput.click());
+document.getElementById('recordInsteadBtn').addEventListener('click', () => showRecordingGuide());
 uploadZone.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
 });
@@ -2682,7 +2715,9 @@ uploadZone.addEventListener('drop', e => {
   if (e.dataTransfer.files.length) loadVideo(e.dataTransfer.files[0]);
 });
 fileInput.addEventListener('change', () => {
-  if (fileInput.files.length) loadVideo(fileInput.files[0]);
+  const file = fileInput.files[0];
+  fileInput.value = '';
+  if (file) loadVideo(file);
 });
 
 let currentVideoFile = null;
@@ -2690,6 +2725,7 @@ let videoObjectUrl = null;
 let loadGeneration = 0;
 let videoReadyWatch = 0;
 function setVideoSource(url) {
+  video.onloadedmetadata = video.onloadeddata = video.onerror = null;
   if (videoObjectUrl) {
     URL.revokeObjectURL(videoObjectUrl);
     videoObjectUrl = null;
@@ -2701,32 +2737,6 @@ function setVideoSource(url) {
     video.load();
   }
 }
-async function fileLooksLikeHevc(file) {
-  try {
-    const slices = [file.slice(0, 65536)];
-    if (file.size > 65536) slices.push(file.slice(Math.max(0, file.size - 262144)));
-    const parts = await Promise.all(slices.map(part => part.arrayBuffer()));
-    const decode = (buf) => new TextDecoder("latin1").decode(buf);
-    const head = decode(parts[0]);
-    const ftypAt = head.indexOf("ftyp");
-    const ftyp = ftypAt >= 0 ? head.slice(ftypAt, ftypAt + 32) : "";
-    if (ftyp.includes("avc1") || ftyp.includes("avc3")) return false;
-    if (ftyp.includes("hvc1") || ftyp.includes("hev1")) return true;
-    const tail = parts.slice(1).map(decode).join("\n");
-    return tail.includes("hvc1") || tail.includes("hev1") || tail.includes("hvcC");
-  } catch (err) {
-    return false;
-  }
-}
-
-function browserCanPlayHevc() {
-  const probe = document.createElement("video");
-  return ["hvc1", "hev1"].some(codec => {
-    const support = probe.canPlayType(`video/mp4; codecs="${codec}"`);
-    return support === "probably" || support === "maybe";
-  });
-}
-
 function stopAnalysisForSourceChange() {
   if (!analyzing) return;
   analysisAbort = true;
@@ -2785,49 +2795,72 @@ function resetClipReview() {
   if (document.getElementById('playerIdStatus')) document.getElementById('playerIdStatus').textContent = '';
 }
 
-async function loadVideo(file) {
+function loadVideo(file) {
   const generation = ++loadGeneration;
   clearTimeout(videoReadyWatch);
   stopAnalysisForSourceChange();
-  window.__tcTiming.filePickedAt = performance.now();
-  if (await fileLooksLikeHevc(file) && !browserCanPlayHevc()) {
-    if (generation !== loadGeneration) return;
-    reviewCard.style.display = "block";
-    analysisStatus.innerHTML = '<div class="error-toast">This is an iPhone HEVC (H.265) video. Chrome on a computer usually cannot play it, so nothing was loaded. In Photos, export a copy as Most Compatible (H.264 MP4) and upload that. The video never leaves this browser.</div>';
-    return;
-  }
-  if (generation !== loadGeneration) return;
+  reviewCard.style.display = 'none';
+  resetClipReview();
   matchResultInput.value = matchScoreInput.value = matchOpponentInput.value = '';
   updateMatchScoreRequirement();
-  currentVideoFile = file;
-  const url = URL.createObjectURL(file);
-  setVideoSource(url);
-  reviewCard.style.display = 'block';
-  resetClipReview();
-  const fitCanvas = () => {
-    if (!video.videoWidth) return;
-    overlay.width = video.videoWidth;
-    overlay.height = video.videoHeight;
-    ballCanvas.width = video.videoWidth;
-    ballCanvas.height = video.videoHeight;
-  };
-  videoReadyWatch = setTimeout(() => {
-    if (generation !== loadGeneration || video.videoWidth) return;
-    analysisStatus.innerHTML = '<div class="error-toast">This clip has no usable picture. Try a longer H.264 MP4.</div>';
-  }, 4000);
-  video.onloadedmetadata = () => {
-    clearTimeout(videoReadyWatch);
-    fitCanvas();
-    if (window.__tcTiming.filePickedAt) {
+  currentVideoFile = null;
+  clipHelp.hidden = true;
+  clipLoadStatus.hidden = false;
+  clipLoadStatus.textContent = 'Opening your clip…';
+  window.__tcTiming.filePickedAt = performance.now();
+
+  function openClip(blob, canRetry) {
+    setVideoSource(URL.createObjectURL(blob));
+    video.onloadedmetadata = video.onloadeddata = () => {
+      if (generation !== loadGeneration) return;
+      if (!video.videoWidth || !video.videoHeight || video.duration <= 0) {
+        if (video.readyState >= 2) showClipError('This file has no usable video frames. Choose a clip that plays in Photos or Files.');
+        return;
+      }
+      clearTimeout(videoReadyWatch);
+      overlay.width = ballCanvas.width = video.videoWidth;
+      overlay.height = ballCanvas.height = video.videoHeight;
+      if (currentVideoFile === file) return;
+      currentVideoFile = file;
+      clipLoadStatus.hidden = true;
+      reviewCard.style.display = 'block';
       window.__tcTiming.videoReadyMs = Math.round(performance.now() - window.__tcTiming.filePickedAt);
-    }
-  };
-  video.onloadeddata = fitCanvas;
-  if (video.videoWidth) fitCanvas();
-  video.onerror = () => {
-    analysisStatus.innerHTML = '<div class="error-toast">This video could not be decoded. iPhone HEVC (H.265) often fails in desktop Chrome. Export an H.264 MP4 (Photos → Most Compatible) and try that. MOV and WebM also work when the browser supports them.</div>';
-  };
-  reviewCard.scrollIntoView({ behavior: 'smooth' });
+      if (tabAnalyze.style.display !== 'none') reviewCard.scrollIntoView({ behavior: 'smooth' });
+    };
+    video.onerror = () => {
+      if (generation !== loadGeneration) return;
+      const error = video.error?.code;
+      if (canRetry && error === 4 && !currentVideoFile && /\.(mov|mp4|m4v)$/i.test(file.name) && file.type !== 'video/mp4') {
+        openClip(file.slice(0, file.size, 'video/mp4'), false);
+        return;
+      }
+      showClipError(error === 2
+        ? 'Your clip couldn’t be read. If it’s stored in iCloud, download it to your phone and select it again.'
+        : 'This browser couldn’t play the clip. Try another copy or record directly in LimeCourt.');
+    };
+  }
+
+  function showClipError(message) {
+    clearTimeout(videoReadyWatch);
+    stopAnalysisForSourceChange();
+    currentVideoFile = null;
+    setVideoSource('');
+    reviewCard.style.display = 'none';
+    clipLoadStatus.hidden = true;
+    clipLoadError.textContent = message;
+    clipHelp.hidden = false;
+    if (tabAnalyze.style.display !== 'none') clipHelp.scrollIntoView({ block: 'nearest' });
+  }
+
+  if (!file.size) {
+    showClipError('This file is empty. Download it fully, then choose it again.');
+    return;
+  }
+  videoReadyWatch = setTimeout(() => {
+    if (generation !== loadGeneration || currentVideoFile) return;
+    clipLoadStatus.textContent = 'Still opening your clip. You can wait or choose a shorter clip above.';
+  }, 6000);
+  openClip(file, true);
 }
 
 resetBtn.addEventListener('click', () => {
@@ -2838,6 +2871,7 @@ resetBtn.addEventListener('click', () => {
   lastSavedSessionId = null;
   stopLiveCues();
   reviewCard.style.display = 'none';
+  clipHelp.hidden = clipLoadStatus.hidden = true;
   fileInput.value = '';
   video.pause();
   setVideoSource("");
@@ -3625,7 +3659,7 @@ startRecordBtn.addEventListener('click', () => {
   if (!mediaStream) return;
   recordChunks = [];
   // pick a compatible mime type
-  const mimeCandidates = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  const mimeCandidates = ['video/mp4;codecs=avc1.42001f', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
   const mimeType = mimeCandidates.find(m => MediaRecorder.isTypeSupported(m)) || '';
   try {
     mediaRecorder = new MediaRecorder(mediaStream, mimeType ? { mimeType } : undefined);
