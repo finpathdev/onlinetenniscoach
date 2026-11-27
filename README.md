@@ -9,7 +9,7 @@ Live: [finpathdev.github.io/onlinetenniscoach](https://finpathdev.github.io/onli
 ## What you can do
 
 - **Analyze** a video you upload or record in the browser. MediaPipe tracks the body. A color-and-motion pass looks for the ball.
-- **Calibrate** with a real court distance (baseline 78 ft, doubles width 36 ft, singles width 27 ft, service-line depth 21 ft, service box 13.5 ft, or a custom length) so speed is in miles per hour.
+- **Calibrate** with a real court distance (baseline to baseline 78 ft, doubles width 36 ft, singles width 27 ft, service-line depth 21 ft, service box 13.5 ft, or a custom length) so speed is in miles per hour.
 - **Read a report card** with a letter, consistency, rallies, and a contact map. Click a timestamp to jump back to that frame.
 - **Practice** from a short technique book and six drills. Checking one off counts toward a streak on this device. Repeating faults pick the suggested drills and fill a seven-day plan.
 - **Keep progress without an account.** Sessions, profile (level and racket hand), and drill check-offs are stored in `localStorage`.
@@ -27,7 +27,7 @@ The phone layout keeps the same flows. Upload and record stack, and every sectio
 
 ## How a session works
 
-1. Film side-on, from the fence, with your whole body and one court line in frame. Short clips work better than a full match.
+1. Film side-on, from the fence, with your whole body and one court line in frame. Analysis reads the first 40 seconds, so trim the clip to the rally you want to review.
 2. Open **Analyze**, upload the clip or record one, and click both ends of a line whose length you know.
 3. Hit **Analyze video**. The skeleton and ball trail play back in the page. Nothing is uploaded unless you later choose to save the video (30 MB max) while signed in.
 4. Take the focus line into **Practice**.
@@ -40,7 +40,7 @@ Left-handed classification uses the racket hand from onboarding or Profile.
 
 ## Install and offline
 
-The site is a progressive web app. `manifest.json` starts at `app.html`, and `sw.js` caches the shell under `tennis-coach-v5`.
+The site is a progressive web app. `manifest.json` starts at `app.html`, and `sw.js` caches the shell under `tennis-coach-v6`.
 
 - HTML, CSS, and JavaScript are **network-first**, then written into the cache, so a refresh picks up a new deploy. The cache is the offline fallback.
 - Older caches are deleted when the service worker activates.
@@ -68,7 +68,7 @@ The Supabase project `onlinetenniscoach` was paused when this work started. It w
 | `theme.css` | Shared visual system. Outfit is self-hosted in `fonts/` |
 | `bg.js` | Court, mesh, and tennis-ball background |
 | `pwa.js` | Service worker registration, update prompt, offline note |
-| `sw.js` | App-shell cache (`tennis-coach-v5`) |
+| `sw.js` | App-shell cache (`tennis-coach-v6`) |
 | `manifest.json` | Install metadata. Scope is the project folder, so GitHub Pages project sites work |
 | `coach.test.mjs` | Unit tests for calibration distances, shot rules, rallies, and the week plan |
 
