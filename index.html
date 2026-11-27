@@ -13,9 +13,9 @@
 <link rel="icon" href="logo-192.png" type="image/png">
 <link rel="stylesheet" href="theme.css">
 </head>
-<body>
+<body class="landing">
 <a class="skip" href="#content">Skip to content</a>
-<canvas id="rippleBg"></canvas>
+<canvas id="rippleBg" aria-hidden="true"></canvas>
 
 <header class="topbar">
   <a class="brand" href="index.html">
@@ -27,19 +27,24 @@
 
 <main id="content">
   <section class="hero">
-    <div class="eyebrow">Free · In the browser · On your device</div>
+    <div class="hero-copy">
+    <div class="eyebrow">Free tennis video analysis</div>
     <h1>See the shot<br><span class="accent">you actually hit.</span></h1>
-    <p class="tagline">A free tennis coach that stays on your device. Track the ball, map the bounces you can trust, and get one technique note per stroke. No upload. No account required.</p>
+    <p class="tagline">Review your strokes, follow the ball, and find your next drill. Analyze a rally right in your browser.</p>
     <div class="cta-row">
-      <a class="cta-btn" href="app.html">Start coaching</a>
+      <a class="cta-btn" href="app.html">Analyze a rally</a>
       <a class="top-link" href="app.html#practice">Browse drills</a>
     </div>
-    <p class="cta-note">Works on a phone or a laptop. Progress is saved in this browser.</p>
+    <p class="cta-note">No account required.</p>
+    </div>
+    <figure class="hero-preview">
+      <img src="docs/analyze.png" alt="LimeCourt analysis screen showing the video review tools" fetchpriority="high">
+    </figure>
   </section>
 
   <div class="proof">
-    <div><strong>Pose, not a chatbot</strong><span>MediaPipe tracks your body. Notes come from contact point, extension, rotation, and balance.</span></div>
-    <div><strong>Speed you can trust more</strong><span>Miles per hour show up only after a court line and a clean ball track. Otherwise the number stays blank.</span></div>
+    <div><strong>Technique feedback</strong><span>MediaPipe tracks your body. Notes come from contact point, extension, rotation, and balance.</span></div>
+    <div><strong>Calibrated ball speed</strong><span>Miles per hour show up only after a court line and a clean ball track. Otherwise the number stays blank.</span></div>
     <div><strong>A plan for the week</strong><span>Repeating faults turn into drills and a seven-day practice card.</span></div>
   </div>
 
