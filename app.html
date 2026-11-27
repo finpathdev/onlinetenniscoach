@@ -1538,6 +1538,7 @@ const navCommunity = document.getElementById('navCommunity');
 const TABS = ['analyze', 'practice', 'dashboard', 'community', 'leaderboard', 'profile', 'about'];
 function showTab(tab, sharedId = null) {
   if (!TABS.includes(tab)) tab = 'analyze';
+  if (tab !== 'analyze') discardRecording();
   tabAnalyze.style.display = tab === 'analyze' ? 'block' : 'none';
   document.getElementById('tabPractice').style.display = tab === 'practice' ? 'block' : 'none';
   tabDashboard.style.display = tab === 'dashboard' ? 'block' : 'none';
@@ -2815,6 +2816,7 @@ function resetClipReview() {
 }
 
 function loadVideo(file) {
+  discardRecording();
   const generation = ++loadGeneration;
   clearTimeout(videoReadyWatch);
   stopAnalysisForSourceChange();
@@ -3159,8 +3161,8 @@ function frameLooksLikeScreenRecording() {
 
 function seekVideo(time) {
   return new Promise((resolve) => {
-    const duration = Number.isFinite(video.duration) ? video.duration : time;
-    const target = Math.max(0, Math.min(time, Math.max(0, duration - 0.05)));
+    const end = Number.isFinite(video.duration) ? video.duration - 0.05 : Infinity;
+    const target = Math.max(0, Math.min(time, end));
     let settled = false;
     const finish = () => {
       if (settled) return;
@@ -3289,7 +3291,8 @@ function finishStoppedAnalysis() {
 async function runSteppedAnalysis(details) {
   const gen = analysisGen;
   const duration = video.duration;
-  if (!Number.isFinite(duration) || duration <= 0) {
+  // Container metadata for live-created WebM may report an open-ended duration.
+  if (Number.isNaN(duration) || duration <= 0) {
     throw new Error('the clip has no duration');
   }
   if (duration < 0.25) {
@@ -3312,19 +3315,14 @@ async function runSteppedAnalysis(details) {
   video.playbackRate = 4;
   video.muted = true;
   await seekVideo(0);
-  try { if (!analysisAbort && gen === analysisGen) await video.play(); }
-  catch (err) {
-    throw new Error(err && err.name === "NotSupportedError"
-      ? "This browser cannot play the video. iPhone HEVC files need to be exported as H.264 MP4."
-      : (err.message || "playback failed"));
-  }
+  if (!analysisAbort && gen === analysisGen) await video.play();
   let nextT = 0;
   let stalls = 0;
   let lastTime = -1;
   while (!analysisAbort && gen === analysisGen && video.currentTime < limit - 0.03 && !video.ended && stalls < 40) {
     if (video.currentTime + 0.008 < nextT) {
       if (video.paused) {
-        try { await video.play(); } catch (err) { break; }
+        await video.play();
       }
       await new Promise(requestAnimationFrame);
       if (Math.abs(video.currentTime - lastTime) < 0.001) stalls += 1;
@@ -3332,6 +3330,7 @@ async function runSteppedAnalysis(details) {
       lastTime = video.currentTime;
       continue;
     }
+    stalls = 0;
     video.pause();
     const t = video.currentTime;
     let result = detectFrame(false);
@@ -3406,7 +3405,7 @@ async function runSteppedAnalysis(details) {
       await new Promise(r => setTimeout(r, 0));
     }
     if (!analysisAbort && gen === analysisGen && t < limit - 0.05) {
-      try { await video.play(); } catch (err) { break; }
+      await video.play();
     }
   }
   if (gen !== analysisGen) return;
@@ -3415,6 +3414,8 @@ async function runSteppedAnalysis(details) {
     finishStoppedAnalysis();
     return;
   }
+
+  if (stalls >= 40 && !video.ended) throw new Error('the clip stopped advancing');
 
   events.length = 0;
   Object.keys(shotCounts).forEach(k => delete shotCounts[k]);
@@ -3425,6 +3426,7 @@ async function runSteppedAnalysis(details) {
   events.forEach(e => { e.speedEst = ballSpeedMph(ballTrack, e.time, scale, diag); });
   speeds.length = 0;
   events.forEach(e => { if (e.speedEst != null) speeds.push(e.speedEst); });
+  const reachedEnd = video.ended;
   const featured = events.find(e => e.type === 'Serve / Overhead') || events[0];
   if (featured) await seekVideo(featured.time);
   if (gen !== analysisGen) return;
@@ -3433,7 +3435,7 @@ async function runSteppedAnalysis(details) {
     return;
   }
   finishAnalysis(speeds, shotCounts, motionSamples, details);
-  const clipped = duration - limit > 0.4;
+  const clipped = duration - limit > 0.4 && !reachedEnd && nextT >= limit - 0.03;
   const noun = events.length === 1 ? 'shot' : 'shots';
   let status = `Analysis complete — ${events.length} ${noun}. The body was visible on ${poseFrames} frames.`;
   if (!poseFrames) status = 'No player was visible. Step back so the whole body is in frame, then analyze again.';
@@ -3691,11 +3693,15 @@ startRecordBtn.addEventListener('click', () => {
     const blob = new Blob(recordChunks, { type: mediaRecorder.mimeType || 'video/webm' });
     const file = new File([blob], `recording-${Date.now()}.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`, { type: blob.type });
     // hand off to the same loader used for uploads
-    if (blob.size) loadVideo(file);
     stopLiveCues();
     closeCamera();
-    if (blob.size) recordCard.style.display = 'none';
+    if (blob.size) loadVideo(file);
     else recordStatus.textContent = 'No video was captured. Enable the camera and try again.';
+  };
+  mediaRecorder.onerror = () => {
+    discardRecording();
+    recordCard.style.display = 'block';
+    recordStatus.textContent = 'Recording was interrupted. Enable the camera and try again.';
   };
   try {
     mediaRecorder.start();
@@ -3783,16 +3789,22 @@ function closeCamera() {
   recordStatus.textContent = '';
 }
 
-cancelRecordBtn.addEventListener('click', () => {
+function discardRecording() {
+  if (recordCard.style.display === 'none') return;
   ++cameraRequest;
   stopLiveCues();
   if (mediaRecorder) {
     mediaRecorder.ondataavailable = null;
     mediaRecorder.onstop = null;
+    mediaRecorder.onerror = null;
     if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   }
   closeCamera();
   recordCard.style.display = 'none';
+}
+
+cancelRecordBtn.addEventListener('click', () => {
+  discardRecording();
   recordZone.focus({ preventScroll: true });
 });
 
