@@ -555,3 +555,145 @@ button.ghost-danger { color: var(--danger); }
     transition: none !important;
   }
 }
+
+/* Landing and coach layout */
+*, *::before, *::after { box-sizing: border-box; }
+body.landing, body.coach-app { margin: 0; color-scheme: dark; }
+#rippleBg { opacity: .42; }
+.landing .topbar, .coach-app .site-header { max-width: 1200px; margin: auto; }
+.landing .brand, .coach-app .brand { font-size: 1.25rem; }
+.landing main { max-width: 1200px; }
+.landing .top-link { display: inline-flex; align-items: center; justify-content: center; }
+.landing .hero {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 1.1fr);
+  align-items: center;
+  gap: clamp(22px, 5vw, 64px);
+  max-width: none;
+  padding: clamp(36px, 7vw, 94px) 12px 32px;
+  text-align: left;
+}
+.hero-copy { min-width: 0; }
+.landing .hero h1 { font-size: clamp(2.6rem, 6vw, 5.35rem); }
+.landing .tagline { margin-inline: 0; }
+.landing .cta-row { justify-content: flex-start; }
+.hero-preview {
+  margin: 0;
+  padding: clamp(7px, 1.1vw, 13px);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: linear-gradient(145deg, #253b24, #0c1811 70%);
+  box-shadow: 0 20px 60px #0008;
+}
+.hero-preview img { display: block; width: 100%; height: auto; border-radius: 13px; }
+.landing .proof, .landing .section { max-width: unset; padding-inline: 12px; }
+.landing .section-title { text-align: left; }
+.landing .feature, .landing .step { box-shadow: none; background: #102018; }
+.landing .feature h3, .landing .step h3 { color: var(--text); }
+.landing .bottom-cta { margin-inline: auto; }
+
+.coach-app main { max-width: 1120px; padding-top: clamp(22px, 4vw, 48px); }
+.coach-app .site-header { padding: 16px clamp(14px, 3vw, 28px); gap: 8px; }
+.account-panel {
+  position: relative;
+  z-index: 31;
+  max-width: 1144px;
+  margin: 0 auto 12px;
+  padding-inline: clamp(14px, 3vw, 24px);
+}
+.account-panel > summary {
+  width: fit-content;
+  color: var(--muted);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.account-panel[open] > summary { color: var(--lime); border-color: var(--line); }
+.account-panel .auth-bar {
+  justify-content: flex-start;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: #101e16;
+}
+.account-panel input { min-width: 0; max-width: 100%; }
+.coach-app #navBar { padding: 8px 12px; background: #0b1710f2; }
+.coach-app #navBar button { min-height: 42px; font-size: .9rem; }
+.coach-app #navBar button:hover { background: #ffffff0c; }
+.coach-app #navBar button.is-active { background: var(--lime); color: #14210c; }
+.page-heading { margin: 0 0 clamp(16px, 2.5vw, 26px); }
+.page-heading h2 { margin: 0; font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1; letter-spacing: -.045em; }
+.page-heading p { margin: 10px 0 0; color: var(--muted); line-height: 1.5; }
+.coach-app .card {
+  min-width: 0;
+  padding: clamp(15px, 2.5vw, 26px);
+  background: linear-gradient(145deg, #13251b, #0d1b14 72%);
+  box-shadow: 0 10px 30px #0003;
+}
+.coach-app .card h3 { font-size: clamp(1.13rem, 2vw, 1.35rem); }
+.coach-app .capture-card { border-color: var(--line); }
+.capture-card .upload-grid { gap: 14px; }
+.capture-card .upload-zone {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  min-height: 156px;
+  padding: 20px 14px;
+  background: #0b1711;
+}
+.capture-card #uploadZone { background: linear-gradient(155deg, #28381d, #132219); border-color: #b7d65088; }
+.capture-card .upload-zone:hover, .capture-card .upload-zone.dragover { border-color: var(--lime); background: #23351c; }
+.capture-card .upload-zone strong { font-size: 1.16rem; }
+.capture-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 10px;
+  border-radius: 13px;
+  background: var(--lime);
+  color: #13210c;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.record-icon { background: #1d3426; }
+.record-icon::before { content: ""; width: 14px; height: 14px; border: 2px solid var(--lime); border-radius: 50%; }
+.capture-tips { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--stroke); color: var(--muted); font-size: .9rem; line-height: 1.6; }
+.capture-tips summary, .tech-card summary { cursor: pointer; color: var(--text); }
+#dashboardContent, .compare-fields, .technique-grid, .drill-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+#dashboardContent > .card, .technique-grid > *, .drill-grid > * { margin-bottom: 0; }
+.technique-grid { align-items: start; }
+.drill-card { display: flex; flex-direction: column; gap: 6px; }
+.drill-card .drill-toggle { margin-top: auto; align-self: flex-start; }
+.drill-card.done { opacity: 1; background: #1a2c18; }
+.compare-fields { margin-bottom: 10px; }
+.coach-app :is(input, select, textarea, video, svg) { max-width: 100%; }
+.compare-fields select, .comment-input { min-width: 0; }
+.coach-app .session-item, .coach-app .stat, .coach-app .plan-row { box-shadow: none; border-color: var(--stroke); }
+.coach-app .session-item { overflow-wrap: anywhere; }
+.coach-app .empty-state { padding: clamp(18px, 3vw, 32px) 12px; background: #0a1711; border: 1px dashed var(--stroke); border-radius: 12px; }
+.stroke-report { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); align-items: center; gap: 10px; }
+.coach-app .cloud-banner { max-width: min(1084px, calc(100% - 28px)); margin-top: 12px; }
+.coach-app button.secondary:hover:not(:disabled) { border-color: var(--lime); }
+.coach-app .pill { white-space: nowrap; }
+.update-bar { width: max-content; max-width: calc(100% - 24px); }
+.update-bar[hidden] { display: none; }
+
+@media (max-width: 760px) {
+  .landing .hero { grid-template-columns: 1fr; }
+  .hero-preview { max-width: 580px; }
+  #dashboardContent { grid-template-columns: minmax(0, 1fr); }
+  .coach-app #navBar { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; scrollbar-width: thin; }
+  .coach-app #navBar button { flex: none; font-size: .85rem !important; padding: 8px 12px !important; }
+}
+@media (max-width: 560px) {
+  .compare-fields, .technique-grid, .drill-grid { grid-template-columns: minmax(0, 1fr); }
+  .coach-app .auth-bar input { width: 100%; }
+  .capture-card .upload-zone { min-height: 112px; }
+  .stroke-report { grid-template-columns: minmax(0, 1fr) auto; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .capture-card .upload-zone { transition: background .18s ease, border-color .18s ease; }
+}
