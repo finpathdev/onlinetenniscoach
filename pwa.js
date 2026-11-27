@@ -30,10 +30,10 @@
 
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").then((reg) => {
-      let refreshing = false;
+      let reloadRequested = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (refreshing) return;
-        refreshing = true;
+        if (!reloadRequested) return;
+        reloadRequested = false;
         location.reload();
       });
       function offerReload() {
@@ -48,8 +48,10 @@
         button.type = "button";
         button.textContent = "Reload";
         button.addEventListener("click", () => {
-          if (reg.waiting) reg.waiting.postMessage({ type: "skip-waiting" });
-          else location.reload();
+          if (reg.waiting) {
+            reloadRequested = true;
+            reg.waiting.postMessage({ type: "skip-waiting" });
+          } else location.reload();
         });
         bar.append(label, button);
       }
