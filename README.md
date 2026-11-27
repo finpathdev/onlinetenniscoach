@@ -40,7 +40,7 @@ Left-handed classification uses the racket hand from onboarding or Profile.
 
 ## Install and offline
 
-The site is a progressive web app. `manifest.json` starts at `app.html`, and `sw.js` caches the shell under `tennis-coach-v6`.
+The site is a progressive web app. `manifest.json` starts at `app.html`, and `sw.js` caches the shell under `tennis-coach-v7`.
 
 - HTML, CSS, and JavaScript are **network-first**, then written into the cache, so a refresh picks up a new deploy. The cache is the offline fallback.
 - Older caches are deleted when the service worker activates.
@@ -68,7 +68,7 @@ The Supabase project `onlinetenniscoach` was paused when this work started. It w
 | `theme.css` | Shared visual system. Outfit is self-hosted in `fonts/` |
 | `bg.js` | Court, mesh, and tennis-ball background |
 | `pwa.js` | Service worker registration, update prompt, offline note |
-| `sw.js` | App-shell cache (`tennis-coach-v6`) |
+| `sw.js` | App-shell cache (`tennis-coach-v7`) |
 | `manifest.json` | Install metadata. Scope is the project folder, so GitHub Pages project sites work |
 | `coach.test.mjs` | Unit tests for calibration distances, shot rules, rallies, and the week plan |
 
