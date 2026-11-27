@@ -337,6 +337,11 @@
     font-size: 0.85rem;
   }
   .session-item .meta { color: var(--muted); font-size: 0.78rem; }
+  .match-details[hidden] { display: none; }
+  .match-details:not([hidden]) { display: grid; gap: 7px; }
+  .match-details input, .match-details select { width: 100%; }
+  .match-details small { color: var(--muted); }
+  #recordGuide li + li { margin-top: 5px; }
 </style>
 <link rel="stylesheet" href="theme.css">
 </head>
@@ -411,6 +416,16 @@
     <p>Upload or record a short clip to get shot-by-shot feedback.</p>
   </div>
   <div class="card capture-card">
+    <fieldset class="calib-banner" style="display:block; margin:0 0 14px;">
+      <legend>What are you analyzing?</legend>
+      <div class="controls">
+        <label class="toggle"><input type="radio" name="sessionType" value="practice" checked> Practice</label>
+        <label class="toggle"><input type="radio" name="sessionType" value="match"> Analyze a match</label>
+      </div>
+      <p id="matchCaptureHint" hidden style="margin:8px 0 0; color:var(--muted);">
+        Upload or record a few points from your match. You’ll enter the result and score before analyzing the clip.
+      </p>
+    </fieldset>
     <div class="upload-grid">
       <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Upload a video">
         <span class="capture-icon" aria-hidden="true">↑</span>
@@ -442,11 +457,22 @@
 
   <div class="card" id="recordCard" style="display:none;">
     <h3 style="margin-top:0;">📹 Camera recording</h3>
-    <video id="recordPreview" autoplay muted playsinline style="width:100%; border-radius:10px; background:black;"></video>
+    <details class="capture-tips" id="recordGuide" open>
+      <summary>How to record a clip</summary>
+      <ol>
+        <li>Check that filming is allowed and let the other players know.</li>
+        <li>Set your phone sideways on a stable mount outside the court, near the net post if possible.</li>
+        <li>Tap <strong>Enable camera</strong>. Use the preview to fit your whole body and a court line in the frame.</li>
+        <li>Tap <strong>Start Recording</strong> before the point. Capture one rally or a few points, then tap <strong>Stop</strong> during a break.</li>
+        <li id="recordReviewStep">In the review, tag yourself, mark both ends of a visible court line for speed estimates, and tap <strong>Analyze video</strong>.</li>
+      </ol>
+    </details>
+    <video hidden id="recordPreview" autoplay muted playsinline style="width:100%; border-radius:10px; background:black;"></video>
     <div class="controls" style="margin-top:12px;">
-      <button id="startRecordBtn">● Start Recording</button>
+      <button type="button" id="enableCameraBtn">Enable camera</button>
+      <button id="startRecordBtn" disabled>● Start Recording</button>
       <button class="secondary" id="stopRecordBtn" style="display:none;">⏹ Stop</button>
-      <button class="secondary" id="switchCameraBtn">🔄 Switch camera</button>
+      <button class="secondary" id="switchCameraBtn" disabled>🔄 Switch camera</button>
       <button class="secondary" id="cancelRecordBtn">Cancel</button>
       <span id="recordStatus" style="color:var(--muted); font-size:0.85rem;"></span>
     </div>
@@ -459,25 +485,22 @@
 
   <div class="card" id="reviewCard" style="display:none;">
 
-    <div class="calib-banner" id="sessionTypeBanner" style="display:block;">
-      <strong>🎯 Session type</strong>
-      <p style="color: var(--muted); margin: 8px 0;">Was this a practice session or a match?</p>
-      <div style="display:flex; gap:8px; margin-bottom:10px;">
-        <label class="toggle" style="flex:1; padding:10px; border-radius:8px; background:#0d1b0f; border:1px solid #2f4f35; cursor:pointer;">
-          <input type="radio" name="sessionType" value="practice" checked>
-          Practice
-        </label>
-        <label class="toggle" style="flex:1; padding:10px; border-radius:8px; background:#0d1b0f; border:1px solid #2f4f35; cursor:pointer;">
-          <input type="radio" name="sessionType" value="match">
-          Match
-        </label>
-      </div>
-      <div id="matchDetails" style="display:none; margin-top:10px;">
-        <input type="text" id="matchOpponent" placeholder="Opponent name (optional)" style="width:100%; padding:8px 12px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.9rem; margin-bottom:8px;">
-        <input type="text" id="matchScore" placeholder="Final score (e.g. 6-3, 6-4)" style="width:100%; padding:8px 12px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.9rem;">
-        <p style="color: var(--muted); font-size: 0.75rem; margin: 10px 0 0;">ℹ️ Match records are automatically deleted after 3 months to keep your history clean. Practice sessions are kept indefinitely.</p>
-      </div>
-    </div>
+    <fieldset class="calib-banner match-details" id="matchDetails" hidden>
+      <legend>Match details</legend>
+      <label for="matchResult">How did the match end?</label>
+      <select id="matchResult" required>
+        <option value="">Choose a result</option>
+        <option>Win</option>
+        <option>Loss</option>
+        <option>Unfinished</option>
+        <option>Unknown</option>
+      </select>
+      <label for="matchScore">Set scores, your score first</label>
+      <input type="text" id="matchScore" maxlength="100" placeholder="e.g. 6-4, 3-6, 10-7" aria-describedby="matchScoreHelp">
+      <small id="matchScoreHelp">Include any match tiebreak. A score is required for a win or loss.</small>
+      <label for="matchOpponent">Opponent or team (optional)</label>
+      <input type="text" id="matchOpponent" maxlength="80">
+    </fieldset>
 
     <div class="calib-banner" id="playerIdBanner" style="display:block;">
       <strong>👤 Tag yourself in the video</strong>
@@ -2003,7 +2026,7 @@ async function renderMatchHistory() {
       <div style="background:#101d12; padding:12px 14px; border-radius:8px; margin-bottom:8px;">
         <div style="display:flex; justify-content:space-between; align-items:baseline;">
           <div>
-            <strong>${s.match_score || '(no score)'}</strong>
+            <strong>${escapeHtml(s.match_score || '(no score)')}</strong>
             ${s.match_opponent ? `<span style="color:var(--muted); margin-left:6px;">vs ${escapeHtml(s.match_opponent)}</span>` : ''}
           </div>
           <span style="color:var(--muted); font-size:0.78rem;">${created.toLocaleDateString()}</span>
@@ -2713,7 +2736,7 @@ function stopAnalysisForSourceChange() {
   video.playbackRate = analysisPlaybackRate;
   video.muted = analysisMuted;
   analyzeBtn.disabled = false;
-  analyzeBtn.textContent = 'Analyze video';
+  analyzeBtn.textContent = analysisButtonLabel();
 }
 
 function resetClipReview() {
@@ -2774,6 +2797,8 @@ async function loadVideo(file) {
     return;
   }
   if (generation !== loadGeneration) return;
+  matchResultInput.value = matchScoreInput.value = matchOpponentInput.value = '';
+  updateMatchScoreRequirement();
   currentVideoFile = file;
   const url = URL.createObjectURL(file);
   setVideoSource(url);
@@ -2817,7 +2842,7 @@ resetBtn.addEventListener('click', () => {
   video.pause();
   setVideoSource("");
   analyzeBtn.disabled = false;
-  analyzeBtn.textContent = "Analyze video";
+  analyzeBtn.textContent = analysisButtonLabel();
 });
 
 window.__tcTiming = { inferMs: 0, inferCount: 0, modelMs: 0, delegate: "", videoReadyMs: 0, analyzeMs: 0 };
@@ -2940,6 +2965,8 @@ analyzeBtn.addEventListener('click', async () => {
     return;
   }
   if (!video.videoWidth || !video.videoHeight) return;
+  const details = readAnalysisDetails();
+  if (!details) return;
   if (!trustedScale()) {
     analysisStatus.textContent = 'No court line yet, so ball speed stays blank. Stroke notes still run.';
   }
@@ -2960,7 +2987,7 @@ analyzeBtn.addEventListener('click', async () => {
   } catch {
     if (gen === analysisGen) {
       analyzeBtn.disabled = false;
-      analyzeBtn.textContent = 'Analyze video';
+      analyzeBtn.textContent = analysisButtonLabel();
       analyzing = false;
     }
     return;
@@ -2969,7 +2996,7 @@ analyzeBtn.addEventListener('click', async () => {
     if (gen === analysisGen) {
       analyzing = false;
       analyzeBtn.disabled = false;
-      analyzeBtn.textContent = "Analyze video";
+      analyzeBtn.textContent = analysisButtonLabel();
       analysisStatus.textContent = "Analysis stopped.";
     }
     return;
@@ -2979,7 +3006,7 @@ analyzeBtn.addEventListener('click', async () => {
     if (gen === analysisGen) {
       analysisStatus.innerHTML = '<div class="error-toast">This video has no picture frames. Try an MP4 (H.264) or MOV.</div>';
       analyzeBtn.disabled = false;
-      analyzeBtn.textContent = 'Analyze video';
+      analyzeBtn.textContent = analysisButtonLabel();
       analyzing = false;
     }
     return;
@@ -2994,12 +3021,12 @@ analyzeBtn.addEventListener('click', async () => {
   window.__tcTiming.inferMs = 0;
   window.__tcTiming.inferCount = 0;
   try {
-    await runSteppedAnalysis();
+    await runSteppedAnalysis(details);
   } catch (err) {
     if (gen !== analysisGen) return;
     analysisStatus.innerHTML = `<div class="error-toast">Analysis stopped: ${escapeHtml(err.message || 'unknown error')}. A shorter MP4 usually works.</div>`;
     analyzeBtn.disabled = false;
-    analyzeBtn.textContent = 'Analyze video';
+    analyzeBtn.textContent = analysisButtonLabel();
     analyzing = false;
   } finally {
     if (gen === analysisGen) {
@@ -3202,11 +3229,11 @@ function commitStrokes(samples, speeds, shotCounts) {
 function finishStoppedAnalysis() {
   analyzing = false;
   analyzeBtn.disabled = false;
-  analyzeBtn.textContent = 'Analyze video';
+  analyzeBtn.textContent = analysisButtonLabel();
   analysisStatus.textContent = 'Analysis stopped. Nothing from this pass was saved.';
 }
 
-async function runSteppedAnalysis() {
+async function runSteppedAnalysis(details) {
   const gen = analysisGen;
   const duration = video.duration;
   if (!Number.isFinite(duration) || duration <= 0) {
@@ -3352,7 +3379,7 @@ async function runSteppedAnalysis() {
     finishStoppedAnalysis();
     return;
   }
-  finishAnalysis(speeds, shotCounts, motionSamples);
+  finishAnalysis(speeds, shotCounts, motionSamples, details);
   const clipped = duration - limit > 0.4;
   const noun = events.length === 1 ? 'shot' : 'shots';
   let status = `Analysis complete — ${events.length} ${noun}. The body was visible on ${poseFrames} frames.`;
@@ -3387,11 +3414,11 @@ function paintShotList() {
     feedbackList.appendChild(li);
   });
 }
-function finishAnalysis(speeds, shotCounts, motionSamples) {
+function finishAnalysis(speeds, shotCounts, motionSamples, details) {
   cancelAnimationFrame(rafId);
   analyzing = false;
   analyzeBtn.disabled = false;
-  analyzeBtn.textContent = 'Analyze video';
+  analyzeBtn.textContent = analysisButtonLabel();
   popup.style.display = 'none';
 
   // ---- Rally segmentation ----
@@ -3447,10 +3474,9 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
   const reportCardEl = document.getElementById('reportCard');
   if (reportCardEl) reportCardEl.innerHTML = `<p class="plan-row">${escapeHtml(focusLine(events))}</p>` + reportRows;
 
-  matchOpponent = document.getElementById('matchOpponent') ? document.getElementById('matchOpponent').value : '';
-  matchScore = document.getElementById('matchScore') ? document.getElementById('matchScore').value : '';
-  const selectedType = document.querySelector('input[name="sessionType"]:checked');
-  sessionType = selectedType ? selectedType.value : 'practice';
+  sessionType = details.type;
+  matchOpponent = details.opponent;
+  matchScore = details.score;
 
   track('video_analyzed', { shots: events.length, top: speeds.length ? Math.round(Math.max(...speeds)) : 0, sessionType });
 
@@ -3530,10 +3556,21 @@ const stopRecordBtn = document.getElementById('stopRecordBtn');
 const switchCameraBtn = document.getElementById('switchCameraBtn');
 const cancelRecordBtn = document.getElementById('cancelRecordBtn');
 const recordStatus = document.getElementById('recordStatus');
+const enableCameraBtn = document.getElementById('enableCameraBtn');
+
+function showRecordingGuide() {
+  document.getElementById('recordGuide').open = true;
+  recordCard.style.display = 'block';
+  recordCard.scrollIntoView({ behavior: 'smooth' });
+  if (!mediaStream && !enableCameraBtn.disabled) enableCameraBtn.focus({ preventScroll: true });
+}
+enableCameraBtn.addEventListener('click', openCamera);
 
 async function openCamera() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') return;
   const request = ++cameraRequest;
+  enableCameraBtn.disabled = startRecordBtn.disabled = switchCameraBtn.disabled = true;
+  recordStatus.textContent = 'Opening camera…';
   try {
     if (!window.MediaRecorder || !navigator.mediaDevices?.getUserMedia) {
       throw new Error('Camera recording is unavailable in this browser.');
@@ -3550,6 +3587,9 @@ async function openCamera() {
     }
     mediaStream = stream;
     recordPreview.srcObject = mediaStream;
+    recordPreview.hidden = false;
+    enableCameraBtn.hidden = true;
+    startRecordBtn.disabled = switchCameraBtn.disabled = false;
     recordCard.style.display = 'block';
     recordCard.scrollIntoView({ behavior: 'smooth' });
     recordStatus.textContent = '';
@@ -3562,15 +3602,17 @@ async function openCamera() {
     else if (err.name === 'NotReadableError') msg = 'Camera is already in use by another app.';
     else msg = "Camera unavailable. Check the browser permission and try again.";
     recordCard.style.display = 'block';
+    recordPreview.hidden = true;
+    enableCameraBtn.hidden = enableCameraBtn.disabled = false;
     recordStatus.textContent = msg;
   }
 }
 
-recordZone.addEventListener('click', openCamera);
+recordZone.addEventListener('click', showRecordingGuide);
 recordZone.addEventListener('keydown', event => {
   if (event.key !== 'Enter' && event.key !== ' ') return;
   event.preventDefault();
-  openCamera();
+  showRecordingGuide();
 });
 
 switchCameraBtn.addEventListener('click', async () => {
@@ -3597,11 +3639,10 @@ startRecordBtn.addEventListener('click', () => {
     const file = new File([blob], `recording-${Date.now()}.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`, { type: blob.type });
     // hand off to the same loader used for uploads
     if (blob.size) loadVideo(file);
-    if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
-    mediaStream = null;
-    recordCard.style.display = 'none';
-    startRecordBtn.style.display = 'inline-block';
-    recordStatus.textContent = '';
+    stopLiveCues();
+    closeCamera();
+    if (blob.size) recordCard.style.display = 'none';
+    else recordStatus.textContent = 'No video was captured. Enable the camera and try again.';
   };
   try {
     mediaRecorder.start();
@@ -3612,6 +3653,7 @@ startRecordBtn.addEventListener('click', () => {
   startLiveCues();
   startRecordBtn.style.display = 'none';
   stopRecordBtn.style.display = 'inline-block';
+  switchCameraBtn.disabled = true;
   recordStatus.textContent = '● Recording...';
 });
 
@@ -3675,19 +3717,30 @@ function startLiveCues() {
   }, 480);
 }
 
+function closeCamera() {
+  mediaStream?.getTracks().forEach(track => track.stop());
+  mediaStream = null;
+  mediaRecorder = null;
+  recordPreview.srcObject = null;
+  recordPreview.hidden = true;
+  enableCameraBtn.hidden = enableCameraBtn.disabled = false;
+  startRecordBtn.disabled = switchCameraBtn.disabled = true;
+  startRecordBtn.style.display = 'inline-block';
+  stopRecordBtn.style.display = 'none';
+  recordStatus.textContent = '';
+}
+
 cancelRecordBtn.addEventListener('click', () => {
   ++cameraRequest;
   stopLiveCues();
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+  if (mediaRecorder) {
+    mediaRecorder.ondataavailable = null;
     mediaRecorder.onstop = null;
-    mediaRecorder.stop();
+    if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   }
-  if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
-  mediaStream = null;
+  closeCamera();
   recordCard.style.display = 'none';
-  recordChunks = [];
-  startRecordBtn.style.display = 'inline-block';
-  stopRecordBtn.style.display = 'none';
+  recordZone.focus({ preventScroll: true });
 });
 
 // ---------- Multi-player mode toggle wiring ----------
@@ -3711,12 +3764,50 @@ let sessionType = 'practice';
 let matchOpponent = '';
 let matchScore = '';
 
-document.addEventListener('change', (e) => {
-  if (e.target.name === 'sessionType') {
-    sessionType = e.target.value;
-    document.getElementById('matchDetails').style.display = sessionType === 'match' ? 'block' : 'none';
-  }
+const matchResultInput = document.getElementById('matchResult');
+const matchScoreInput = document.getElementById('matchScore');
+const matchOpponentInput = document.getElementById('matchOpponent');
+
+function matchModeSelected() {
+  return document.querySelector('input[name="sessionType"]:checked').value === 'match';
+}
+
+function analysisButtonLabel() {
+  return matchModeSelected() ? 'Analyze match' : 'Analyze video';
+}
+
+function updateMatchMode() {
+  const isMatch = matchModeSelected();
+  document.getElementById('matchDetails').hidden = !isMatch;
+  document.getElementById('matchCaptureHint').hidden = !isMatch;
+  document.getElementById('recordReviewStep').innerHTML =
+    (isMatch ? 'In the review, enter your match result and score. Then ' : 'In the review, ') +
+    'tag yourself, mark both ends of a visible court line for speed estimates, and tap <strong>' + analysisButtonLabel() + '</strong>.';
+  if (!analyzing) analyzeBtn.textContent = analysisButtonLabel();
+}
+
+document.querySelectorAll('input[name="sessionType"]').forEach(input => {
+  input.addEventListener('change', updateMatchMode);
 });
+function updateMatchScoreRequirement() {
+  matchScoreInput.required = ['Win', 'Loss'].includes(matchResultInput.value);
+  matchScoreInput.setCustomValidity('');
+}
+matchResultInput.addEventListener('change', updateMatchScoreRequirement);
+matchScoreInput.addEventListener('input', updateMatchScoreRequirement);
+updateMatchMode();
+
+function readAnalysisDetails() {
+  if (!matchModeSelected()) return { type: 'practice', opponent: '', score: '' };
+  const score = matchScoreInput.value.trim();
+  matchScoreInput.setCustomValidity(matchScoreInput.required && !score ? 'Enter the set scores, with your score first.' : '');
+  if (!matchResultInput.reportValidity() || !matchScoreInput.reportValidity()) return null;
+  return {
+    type: 'match',
+    opponent: matchOpponentInput.value.trim(),
+    score: score ? `${matchResultInput.value} · ${score}` : matchResultInput.value
+  };
+}
 
 // ---------- Player identification via clothing color signature ----------
 let playerColorSig = null; // [r, g, b] avg from user's torso in selected frames
