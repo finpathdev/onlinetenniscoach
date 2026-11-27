@@ -1137,10 +1137,17 @@ async function loadSessions() {
     btn.addEventListener('click', async () => {
       const path = btn.dataset.path;
       const sessionId = btn.dataset.sessionId;
+      const generation = ++loadGeneration;
       btn.textContent = 'Loading…';
       if (!supabase || !cloudReady) { btn.textContent = 'Rewatch'; showToast('Cloud video storage is offline.'); return; }
       const { data: signed, error } = await supabase.storage.from('session-videos').createSignedUrl(path, 3600);
       if (error) { btn.textContent = '▶ Rewatch'; alert('Could not load video: ' + error.message); return; }
+      btn.textContent = '▶ Rewatch';
+      if (generation !== loadGeneration) return;
+      showTab('analyze');
+      stopAnalysisForSourceChange();
+      clearTimeout(videoReadyWatch);
+      resetClipReview();
       // load the saved session's events and playback in the review card
       const session = data.find(x => x.id === sessionId);
       if (session) {
@@ -1368,7 +1375,7 @@ async function saveSessionToSupabase(summary) {
     if (error) {
       showToast('Saved on this device. Cloud sync did not go through.');
     } else if (data) {
-      lastSavedSessionId = data.id;
+      if (lastSavedSessionId === localSession.id) lastSavedSessionId = data.id;
       localSession.remoteId = data.id;
       saveLocalSessions(loadLocalSessions().map(s => s.id === localSession.id ? localSession : s));
     }
@@ -1378,45 +1385,52 @@ async function saveSessionToSupabase(summary) {
 
 async function updatePublishStatus() {
   if (!lastSavedSessionId) return;
-  if (!supabase || !cloudReady || !currentUser) {
-    document.getElementById('publishStatus').textContent = 'Saved on this device. Sign in when cloud sync is available to publish.';
+  const sessionId = lastSavedSessionId;
+  const session = loadLocalSessions().find(s => s.id === sessionId);
+  const remoteId = session ? session.remoteId : sessionId;
+  const statusEl = document.getElementById('publishStatus');
+  if (!supabase || !cloudReady || !currentUser || !remoteId) {
+    statusEl.textContent = 'This report is saved on this device. It must sync to your account before you can publish it.';
     return;
   }
+  const userId = currentUser.id;
+  const file = currentVideoFile;
   const isPublic = document.getElementById('publishToggle').checked;
   const caption = document.getElementById('publishCaption').value;
   const saveVideo = document.getElementById('saveVideoToggle').checked;
-  const statusEl = document.getElementById('publishStatus');
-
-  let videoPath = null;
-
-  if (saveVideo && currentVideoFile) {
-    if (currentVideoFile.size > 30 * 1024 * 1024) {
-      statusEl.textContent = 'Video too large to save (max 30MB). Skipping video save.';
-    } else {
-      statusEl.textContent = 'Uploading video…';
-      const ext = currentVideoFile.name.split('.').pop() || 'mp4';
-      videoPath = `${currentUser.id}/${lastSavedSessionId}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('session-videos').upload(videoPath, currentVideoFile, { upsert: true });
-      if (upErr) {
-        statusEl.textContent = 'Video upload failed: ' + upErr.message;
-        videoPath = null;
+  const setStatus = message => {
+    if (lastSavedSessionId === sessionId) statusEl.textContent = message;
+  };
+  const button = document.getElementById('confirmPublishBtn');
+  button.disabled = true;
+  setStatus('Saving…');
+  try {
+    const updates = { is_public: isPublic, caption };
+    let videoWarning = '';
+    if (saveVideo && file) {
+      if (file.size > 30 * 1024 * 1024) {
+        videoWarning = ' Video skipped because it is over 30 MB.';
+      } else {
+        setStatus('Uploading video…');
+        const ext = file.name.split('.').pop() || 'mp4';
+        const path = `${userId}/${remoteId}.${ext}`;
+        const { error } = await supabase.storage.from('session-videos').upload(path, file, { upsert: true });
+        if (error) videoWarning = ' Video upload failed. You can retry.';
+        else updates.video_path = path;
       }
     }
+
+    const { data, error } = await supabase.from('sessions')
+      .update(updates).eq('id', remoteId).eq('user_id', userId).select('id').maybeSingle();
+    if (error || !data) throw new Error(error?.message || 'The session is unavailable.');
+    setStatus('Session settings saved.' + videoWarning);
+    loadSessions();
+  } catch (err) {
+    setStatus('Save failed: ' + err.message);
+  } finally {
+    button.disabled = false;
   }
-
-  const updates = { is_public: isPublic, caption: caption };
-  if (videoPath) updates.video_path = videoPath;
-  const { error } = await supabase
-    .from('sessions')
-    .update(updates)
-    .eq('id', lastSavedSessionId);
-  if (error) { statusEl.textContent = 'Save failed: ' + error.message; return; }
-  statusEl.textContent = 'Saved.';
-  loadSessions();
 }
-
-await initCloud();
-await refreshAuthUI();
 
 // ---------- Simple analytics ----------
 async function track(event, meta = {}) {
@@ -1441,7 +1455,7 @@ const navDashboard = document.getElementById('navDashboard');
 const navCommunity = document.getElementById('navCommunity');
 
 const TABS = ['analyze', 'practice', 'dashboard', 'community', 'leaderboard', 'profile', 'about'];
-function showTab(tab) {
+function showTab(tab, sharedId = null) {
   if (!TABS.includes(tab)) tab = 'analyze';
   tabAnalyze.style.display = tab === 'analyze' ? 'block' : 'none';
   document.getElementById('tabPractice').style.display = tab === 'practice' ? 'block' : 'none';
@@ -1460,7 +1474,7 @@ function showTab(tab) {
   track('tab_view', { tab });
   if (tab === 'practice') renderPractice();
   if (tab === 'dashboard') renderDashboard();
-  if (tab === 'community') loadCommunityFeed();
+  if (tab === 'community') loadCommunityFeed(sharedId);
   if (tab === 'leaderboard') loadLeaderboard();
   if (tab === 'profile') renderProfile();
 }
@@ -1471,8 +1485,6 @@ navCommunity.addEventListener('click', () => showTab('community'));
 document.getElementById('navLeaderboard').addEventListener('click', () => showTab('leaderboard'));
 document.getElementById('navProfile').addEventListener('click', () => showTab('profile'));
 document.getElementById('navAbout').addEventListener('click', () => showTab('about'));
-const initialTab = (location.hash || '').replace('#', '');
-showTab(TABS.includes(initialTab) ? initialTab : 'analyze');
 
 // ---------- Dashboard ----------
 const dashboardLoggedOut = document.getElementById('dashboardLoggedOut');
@@ -1661,31 +1673,47 @@ document.addEventListener('click', async (e) => {
   }
 });
 
-async function loadCommunityFeed() {
+let communityRequest = 0;
+async function loadCommunityFeed(sharedId = null) {
+  const request = ++communityRequest;
   const feed = document.getElementById('communityFeed');
   if (!supabase || !cloudReady) {
     feed.innerHTML = `<div class="empty-state"><div class="msg">Community is offline</div><div class="hint">The cloud project is not reachable. Your own sessions are still on this device, under Analyze and Dashboard.</div></div>`;
     return;
   }
   feed.innerHTML = 'Loading...';
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('is_public', true)
-    .order('created_at', { ascending: false })
-    .limit(50);
+  const query = supabase.from('sessions').select('*').eq('is_public', true);
+  const { data, error } = await (sharedId
+    ? query.eq('id', sharedId).limit(1)
+    : query.order('created_at', { ascending: false }).limit(50));
+  if (request !== communityRequest) return;
+  const showFeedButton = () => {
+    if (!sharedId) return;
+    const button = document.createElement('button');
+    button.className = 'secondary';
+    button.textContent = 'Browse all public sessions';
+    button.addEventListener('click', () => {
+      const url = new URL(location.href);
+      url.searchParams.delete('share');
+      history.replaceState(null, '', url);
+      loadCommunityFeed();
+    });
+    feed.prepend(button);
+  };
 
   if (error) {
     feed.innerHTML = `<div class="error-toast">Could not load the community feed: ${escapeHtml(error.message || "unknown error")}</div>`;
+    showFeedButton();
     return;
   }
   if (!data || data.length === 0) {
     feed.innerHTML = `
       <div class="empty-state">
         <div class="emoji">🌍</div>
-        <div class="msg">No public sessions yet</div>
-        <div class="hint">Be the first to share one from the Analyze tab.</div>
+        <div class="msg">${sharedId ? 'Shared session unavailable' : 'No public sessions yet'}</div>
+        <div class="hint">${sharedId ? 'The session may be private or deleted.' : 'Share a session from the Analyze tab to get started.'}</div>
       </div>`;
+    showFeedButton();
     return;
   }
 
@@ -1701,6 +1729,7 @@ async function loadCommunityFeed() {
     followingSet = new Set((follows || []).map(f => f.following_id));
   }
 
+  if (request !== communityRequest) return;
   feed.innerHTML = data.map(s => {
     const date = new Date(s.created_at).toLocaleDateString();
     const authorName = nameMap[s.user_id] || 'anonymous';
@@ -1718,7 +1747,7 @@ async function loadCommunityFeed() {
             ${isSelf ? '' : `<button class="follow-btn" data-target="${s.user_id}" style="padding:4px 12px; font-size:0.78rem;">${isFollowing ? 'Following' : 'Follow'}</button>`}
           </div>
         </div>
-        <div style="margin-top:8px;">${Number(s.shot_count) || 0} shots &middot; avg ${Number(s.avg_speed) || 0} mph &middot; top ${Number(s.top_speed) || 0} mph &middot; mostly ${escapeHtml(s.main_shot || "—")}</div>
+        <div style="margin-top:8px;">${Number(s.shot_count) || 0} shots &middot; ${s.top_speed > 0 ? `avg ${Number(s.avg_speed)} mph &middot; top ${Number(s.top_speed)} mph` : "speed not measured"} &middot; mostly ${escapeHtml(s.main_shot || "—")}</div>
         ${s.caption ? `<p style="margin:8px 0 0; color:var(--text);">${escapeHtml(s.caption)}</p>` : ''}
         <div class="comments-block" style="margin-top:10px;">
           <div class="comments-list" id="cmts-${s.id}"></div>
@@ -1730,6 +1759,8 @@ async function loadCommunityFeed() {
       </div>
     `;
   }).join('');
+
+  showFeedButton();
 
   // load comments for each session
   data.forEach(s => loadCommentsFor(s.id, document.getElementById('cmts-' + s.id)));
@@ -2141,7 +2172,7 @@ document.addEventListener('click', (e) => {
     courtCalibMode = false;
     document.getElementById('courtCalibStatus').textContent = '';
     updateOverlayPointer();
-    renderCourtHeatmap();
+    refreshCourtReads();
   }
 });
 
@@ -2239,7 +2270,7 @@ function refreshCourtReads() {
   }
   window._quiet = quietSpans(events, video.duration || 0);
   const wrap = document.getElementById("heatmapWrap");
-  if (wrap && (courtCorners.length === 4 || window._bounces.length)) wrap.style.display = "block";
+  if (wrap) wrap.style.display = courtCorners.length === 4 || window._bounces.length || events.some(e => e.ballX != null) ? 'block' : 'none';
   renderCourtHeatmap();
   renderMatchBoard();
 }
@@ -2473,14 +2504,34 @@ let calibDots = [];
 
 refLineSelect.addEventListener('change', () => {
   customDistWrap.style.display = refLineSelect.value === 'custom' ? 'inline' : 'none';
+  updateLineScale();
 });
 
 function getRefFeet() {
-  if (refLineSelect.value === 'custom') return parseFloat(customDist.value) || null;
-  return parseFloat(refLineSelect.value);
+  const feet = Number(refLineSelect.value === 'custom' ? customDist.value : refLineSelect.value);
+  return Number.isFinite(feet) && feet > 0 ? feet : null;
 }
 
 let calibPreviewLine = null;
+customDist.addEventListener('input', updateLineScale);
+
+function updateLineScale() {
+  pxPerFoot = null;
+  if (calibPoints.length !== 2 || calibSkipped) return;
+  const feet = getRefFeet();
+  if (!feet) {
+    analysisStatus.textContent = 'Enter a positive distance for your custom reference line.';
+    return;
+  }
+  const [first, second] = calibPoints;
+  const pixels = Math.hypot(second.x - first.x, second.y - first.y);
+  if (pixels < 1) {
+    analysisStatus.textContent = 'Reset the reference line and mark two different points.';
+    return;
+  }
+  pxPerFoot = pixels / feet;
+  analysisStatus.textContent = `Calibrated: ${pxPerFoot.toFixed(1)} px/ft. Ready to analyze.`;
+}
 
 resetCalibBtn.addEventListener('click', () => {
   calibPoints = [];
@@ -2559,17 +2610,7 @@ overlay.addEventListener('click', (e) => {
     videoWrap.appendChild(line);
     calibDots.push(line);
 
-    const feet = getRefFeet();
-    if (!feet) {
-      analysisStatus.textContent = 'Enter a valid distance for your custom reference line.';
-      return;
-    }
-    const cdx = calibPoints[1].x - calibPoints[0].x;
-    const cdy = calibPoints[1].y - calibPoints[0].y;
-    const pxDist = Math.sqrt(cdx*cdx + cdy*cdy);
-    pxPerFoot = pxDist / feet;
-    calibSkipped = false;
-    analysisStatus.textContent = `Calibrated: ${pxPerFoot.toFixed(1)} px/ft. Ready to analyze.`;
+    updateLineScale();
     updateOverlayPointer();
   }
 });
@@ -2580,6 +2621,8 @@ let events = []; // {time, type, speedEst, note}
 let analyzing = false;
 let analysisAbort = false;
 let analysisGen = 0;
+let analysisPlaybackRate = 1;
+let analysisMuted = false;
 let rafId = null;
 
 uploadZone.addEventListener('click', () => fileInput.click());
@@ -2607,7 +2650,11 @@ function setVideoSource(url) {
     videoObjectUrl = null;
   }
   if (url && String(url).startsWith("blob:")) videoObjectUrl = url;
-  video.src = url || "";
+  if (url) video.src = url;
+  else {
+    video.removeAttribute("src");
+    video.load();
+  }
 }
 async function fileLooksLikeHevc(file) {
   try {
@@ -2635,21 +2682,19 @@ function browserCanPlayHevc() {
   });
 }
 
-async function loadVideo(file) {
-  const generation = ++loadGeneration;
-  clearTimeout(videoReadyWatch);
-  currentVideoFile = file;
-  window.__tcTiming.filePickedAt = performance.now();
-  if (await fileLooksLikeHevc(file) && !browserCanPlayHevc()) {
-    if (generation !== loadGeneration) return;
-    reviewCard.style.display = "block";
-    analysisStatus.innerHTML = '<div class="error-toast">This is an iPhone HEVC (H.265) video. Chrome on a computer usually cannot play it, so nothing was loaded. In Photos, export a copy as Most Compatible (H.264 MP4) and upload that. The video never leaves this browser.</div>';
-    return;
-  }
-  if (generation !== loadGeneration) return;
-  const url = URL.createObjectURL(file);
-  setVideoSource(url);
-  reviewCard.style.display = 'block';
+function stopAnalysisForSourceChange() {
+  if (!analyzing) return;
+  analysisAbort = true;
+  ++analysisGen;
+  analyzing = false;
+  video.pause();
+  video.playbackRate = analysisPlaybackRate;
+  video.muted = analysisMuted;
+  analyzeBtn.disabled = false;
+  analyzeBtn.textContent = 'Analyze video';
+}
+
+function resetClipReview() {
   statsGrid.style.display = 'none';
   feedbackList.innerHTML = '';
   events = [];
@@ -2660,6 +2705,27 @@ async function loadVideo(file) {
   pointCountEl.textContent = '0';
   calibDots.forEach(d => d.remove());
   calibDots = [];
+  calibPreviewLine?.remove();
+  calibPreviewLine = null;
+  courtCorners = [];
+  courtConfidence = 'low';
+  courtCalibMode = false;
+  ballTrack = [];
+  window._bounces = [];
+  window._quiet = [];
+  window._board = null;
+  document.getElementById('courtCalibStatus').textContent = '';
+  document.getElementById('reportCard').replaceChildren();
+  for (const id of ['ralliesWrap', 'heatmapWrap', 'matchBoard']) {
+    document.getElementById(id).style.display = 'none';
+  }
+  document.getElementById('shotFilters').hidden = true;
+  shotFilter = 'all';
+  skipQuiet = false;
+  document.querySelectorAll('#shotFilters button').forEach(button => {
+    button.classList.toggle('on', button.dataset.shot === 'all');
+  });
+  document.getElementById('saveVideoToggle').checked = false;
   document.getElementById('publishBox').style.display = 'none';
   document.getElementById('publishToggle').checked = false;
   document.getElementById('publishCaption').value = '';
@@ -2672,6 +2738,25 @@ async function loadVideo(file) {
   updateOverlayPointer();
   if (document.getElementById('playerIdBanner')) document.getElementById('playerIdBanner').style.display = 'block';
   if (document.getElementById('playerIdStatus')) document.getElementById('playerIdStatus').textContent = '';
+}
+
+async function loadVideo(file) {
+  const generation = ++loadGeneration;
+  clearTimeout(videoReadyWatch);
+  stopAnalysisForSourceChange();
+  window.__tcTiming.filePickedAt = performance.now();
+  if (await fileLooksLikeHevc(file) && !browserCanPlayHevc()) {
+    if (generation !== loadGeneration) return;
+    reviewCard.style.display = "block";
+    analysisStatus.innerHTML = '<div class="error-toast">This is an iPhone HEVC (H.265) video. Chrome on a computer usually cannot play it, so nothing was loaded. In Photos, export a copy as Most Compatible (H.264 MP4) and upload that. The video never leaves this browser.</div>';
+    return;
+  }
+  if (generation !== loadGeneration) return;
+  currentVideoFile = file;
+  const url = URL.createObjectURL(file);
+  setVideoSource(url);
+  reviewCard.style.display = 'block';
+  resetClipReview();
   const fitCanvas = () => {
     if (!video.videoWidth) return;
     overlay.width = video.videoWidth;
@@ -2699,7 +2784,11 @@ async function loadVideo(file) {
 }
 
 resetBtn.addEventListener('click', () => {
-  analysisAbort = true;
+  ++loadGeneration;
+  clearTimeout(videoReadyWatch);
+  stopAnalysisForSourceChange();
+  currentVideoFile = null;
+  lastSavedSessionId = null;
   stopLiveCues();
   reviewCard.style.display = 'none';
   fileInput.value = '';
@@ -2828,11 +2917,13 @@ analyzeBtn.addEventListener('click', async () => {
     video.pause();
     return;
   }
-  if (!video.src) return;
-  if (!pxPerFoot) {
+  if (!video.videoWidth || !video.videoHeight) return;
+  if (!trustedScale()) {
     analysisStatus.textContent = 'No court line yet, so ball speed stays blank. Stroke notes still run.';
   }
   const gen = ++analysisGen;
+  analysisPlaybackRate = video.playbackRate;
+  analysisMuted = video.muted;
   analyzeBtn.disabled = false;
   analyzeBtn.textContent = "Stop";
   analyzing = true;
@@ -2844,7 +2935,14 @@ analyzeBtn.addEventListener('click', async () => {
   feedbackList.innerHTML = '';
   try {
     await ensurePoseModel();
-  } catch { analyzeBtn.disabled = false; analyzeBtn.textContent = 'Analyze video'; analyzing = false; return; }
+  } catch {
+    if (gen === analysisGen) {
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = 'Analyze video';
+      analyzing = false;
+    }
+    return;
+  }
   if (analysisAbort || gen !== analysisGen) {
     if (gen === analysisGen) {
       analyzing = false;
@@ -2869,7 +2967,6 @@ analyzeBtn.addEventListener('click', async () => {
   ballCanvas.width = video.videoWidth;
   ballCanvas.height = video.videoHeight;
   video.pause();
-  video.muted = true;
   prevBallPixels = null;
   window.__tcTiming.analyzeStarted = performance.now();
   window.__tcTiming.inferMs = 0;
@@ -2882,6 +2979,12 @@ analyzeBtn.addEventListener('click', async () => {
     analyzeBtn.disabled = false;
     analyzeBtn.textContent = 'Analyze video';
     analyzing = false;
+  } finally {
+    if (gen === analysisGen) {
+      video.pause();
+      video.playbackRate = analysisPlaybackRate;
+      video.muted = analysisMuted;
+    }
   }
 });
 
@@ -3074,6 +3177,13 @@ function commitStrokes(samples, speeds, shotCounts) {
   });
 }
 
+function finishStoppedAnalysis() {
+  analyzing = false;
+  analyzeBtn.disabled = false;
+  analyzeBtn.textContent = 'Analyze video';
+  analysisStatus.textContent = 'Analysis stopped. Nothing from this pass was saved.';
+}
+
 async function runSteppedAnalysis() {
   const gen = analysisGen;
   const duration = video.duration;
@@ -3100,7 +3210,7 @@ async function runSteppedAnalysis() {
   video.playbackRate = 4;
   video.muted = true;
   await seekVideo(0);
-  try { await video.play(); }
+  try { if (!analysisAbort && gen === analysisGen) await video.play(); }
   catch (err) {
     throw new Error(err && err.name === "NotSupportedError"
       ? "This browser cannot play the video. iPhone HEVC files need to be exported as H.264 MP4."
@@ -3193,18 +3303,14 @@ async function runSteppedAnalysis() {
       analysisStatus.innerHTML = `<span class="spinner"></span>Reading ${t.toFixed(1)}s of ${limit.toFixed(0)}s — ${events.length} shot${events.length === 1 ? "" : "s"} so far`;
       await new Promise(r => setTimeout(r, 0));
     }
-    if (t < limit - 0.05) {
-      try { video.play(); } catch (err) { break; }
+    if (!analysisAbort && gen === analysisGen && t < limit - 0.05) {
+      try { await video.play(); } catch (err) { break; }
     }
   }
+  if (gen !== analysisGen) return;
   video.pause();
-  if (analysisAbort || gen !== analysisGen) {
-    if (gen === analysisGen) {
-      analyzing = false;
-      analyzeBtn.disabled = false;
-      analyzeBtn.textContent = "Analyze video";
-      analysisStatus.textContent = "Analysis stopped. Nothing from this pass was saved.";
-    }
+  if (analysisAbort) {
+    finishStoppedAnalysis();
     return;
   }
 
@@ -3219,13 +3325,18 @@ async function runSteppedAnalysis() {
   events.forEach(e => { if (e.speedEst != null) speeds.push(e.speedEst); });
   const featured = events.find(e => e.type === 'Serve / Overhead') || events[0];
   if (featured) await seekVideo(featured.time);
+  if (gen !== analysisGen) return;
+  if (analysisAbort) {
+    finishStoppedAnalysis();
+    return;
+  }
   finishAnalysis(speeds, shotCounts, motionSamples);
   const clipped = duration - limit > 0.4;
   const noun = events.length === 1 ? 'shot' : 'shots';
   let status = `Analysis complete — ${events.length} ${noun}. The body was visible on ${poseFrames} frames.`;
   if (!poseFrames) status = 'No player was visible. Step back so the whole body is in frame, then analyze again.';
   else if (!events.length) status = `The player is in frame (${poseFrames} frames) but no full swing stood out. Include the whole stroke, not just the ready position.`;
-  if (!pxPerFoot) status += ' Mark a court line if you want mph.';
+  if (!trustedScale()) status += ' Mark a court line if you want mph.';
   else if (events.length && !speeds.length) status += ' The ball itself was not tracked, so mph is left blank instead of guessing from the racket.';
   if (clipped) status += ` Only the first ${Math.round(limit)}s were read — trim the clip to the rally you care about.`;
   const recording = window.__tcTiming.screenRecording;
@@ -3386,6 +3497,7 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
 let mediaStream = null;
 let mediaRecorder = null;
 let recordChunks = [];
+let cameraRequest = 0;
 let recordFacing = 'environment'; // rear camera default
 
 const recordZone = document.getElementById('recordZone');
@@ -3398,19 +3510,32 @@ const cancelRecordBtn = document.getElementById('cancelRecordBtn');
 const recordStatus = document.getElementById('recordStatus');
 
 async function openCamera() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') return;
+  const request = ++cameraRequest;
   try {
+    if (!window.MediaRecorder || !navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Camera recording is unavailable in this browser.');
+    }
     if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
-    mediaStream = await navigator.mediaDevices.getUserMedia({
+    mediaStream = null;
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: recordFacing, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     });
+    if (request !== cameraRequest) {
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
+    mediaStream = stream;
     recordPreview.srcObject = mediaStream;
     recordCard.style.display = 'block';
     recordCard.scrollIntoView({ behavior: 'smooth' });
     recordStatus.textContent = '';
   } catch (err) {
+    if (request !== cameraRequest) return;
     let msg;
-    if (err.name === 'NotAllowedError') msg = "Camera access was denied. Enable it in your browser's site settings and try again.";
+    if (!window.MediaRecorder || !navigator.mediaDevices?.getUserMedia) msg = 'Camera recording is unavailable in this browser. Try uploading a clip.';
+    else if (err.name === 'NotAllowedError') msg = "Camera access was denied. Enable it in your browser's site settings and try again.";
     else if (err.name === 'NotFoundError') msg = 'No camera detected on this device.';
     else if (err.name === 'NotReadableError') msg = 'Camera is already in use by another app.';
     else msg = "Camera unavailable. Check the browser permission and try again.";
@@ -3422,6 +3547,7 @@ async function openCamera() {
 recordZone.addEventListener('click', openCamera);
 
 switchCameraBtn.addEventListener('click', async () => {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') return;
   recordFacing = recordFacing === 'environment' ? 'user' : 'environment';
   await openCamera();
 });
@@ -3432,19 +3558,30 @@ startRecordBtn.addEventListener('click', () => {
   // pick a compatible mime type
   const mimeCandidates = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
   const mimeType = mimeCandidates.find(m => MediaRecorder.isTypeSupported(m)) || '';
-  mediaRecorder = new MediaRecorder(mediaStream, mimeType ? { mimeType } : undefined);
+  try {
+    mediaRecorder = new MediaRecorder(mediaStream, mimeType ? { mimeType } : undefined);
+  } catch (err) {
+    recordStatus.textContent = 'This browser could not start recording. Try uploading a clip.';
+    return;
+  }
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
   mediaRecorder.onstop = () => {
     const blob = new Blob(recordChunks, { type: mediaRecorder.mimeType || 'video/webm' });
     const file = new File([blob], `recording-${Date.now()}.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`, { type: blob.type });
     // hand off to the same loader used for uploads
-    loadVideo(file);
+    if (blob.size) loadVideo(file);
     if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
     mediaStream = null;
     recordCard.style.display = 'none';
+    startRecordBtn.style.display = 'inline-block';
     recordStatus.textContent = '';
   };
-  mediaRecorder.start();
+  try {
+    mediaRecorder.start();
+  } catch (err) {
+    recordStatus.textContent = 'Recording could not start. Reopen the camera or upload a clip.';
+    return;
+  }
   startLiveCues();
   startRecordBtn.style.display = 'none';
   stopRecordBtn.style.display = 'inline-block';
@@ -3454,7 +3591,6 @@ startRecordBtn.addEventListener('click', () => {
 stopRecordBtn.addEventListener('click', () => {
   stopLiveCues();
   if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-  startRecordBtn.style.display = 'inline-block';
   stopRecordBtn.style.display = 'none';
 });
 
@@ -3513,8 +3649,12 @@ function startLiveCues() {
 }
 
 cancelRecordBtn.addEventListener('click', () => {
+  ++cameraRequest;
   stopLiveCues();
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.onstop = null;
+    mediaRecorder.stop();
+  }
   if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
   mediaStream = null;
   recordCard.style.display = 'none';
@@ -3759,9 +3899,8 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- Long video warning ----------
 video.addEventListener('loadedmetadata', () => {
-  if (video.duration > 300) {
-    const mins = Math.round(video.duration / 60);
-    showToast(`Heads up: this is a ${mins}-minute video. Analysis may take a few minutes and use lots of memory. For faster results, upload shorter clips.`, 6000);
+  if (video.duration > 40.4) {
+    showToast('Analysis reads the first 40 seconds. Trim the clip to the rally you want to review.', 6000);
   }
 });
 
@@ -3779,26 +3918,17 @@ function copySessionLink(sessionId) {
   }
 }
 
-// ---------- Load a shared session from ?share= URL parameter ----------
-async function loadSharedSessionFromUrl() {
-  const params = new URLSearchParams(location.search);
-  const shareId = params.get('share');
-  if (!shareId) return;
-  if (!supabase || !cloudReady) {
-    showToast('Shared sessions need cloud sync, and it is offline right now.', 4000);
-    return;
-  }
-  const { data, error } = await supabase.from('sessions').select('*').eq('id', shareId).eq('is_public', true).maybeSingle();
-  if (error || !data) {
-    showToast('This shared session is private or no longer available.', 4000);
-    return;
-  }
-  // switch to community tab and highlight
-  showTab('community');
-  setTimeout(() => showToast(`Viewing shared session: ${data.shot_count} shots, top ${data.top_speed} mph`, 4500), 500);
-}
-loadSharedSessionFromUrl();
+// Start after all tab state and event handlers have been initialized.
+const shareId = new URLSearchParams(location.search).get('share');
+const initialTab = shareId ? 'community' : location.hash.slice(1);
+showTab(initialTab);
+loadSessions();
 window.__tcReady = true;
+initCloud().then(async () => {
+  await refreshAuthUI();
+  const activeTab = location.hash.slice(1);
+  if (activeTab !== 'analyze') showTab(activeTab, activeTab === 'community' ? shareId : null);
+});
 const preloadModel = () => { ensurePoseModel().catch(() => {}); };
 if ("requestIdleCallback" in window) requestIdleCallback(preloadModel, { timeout: 1500 });
 else setTimeout(preloadModel, 400);
