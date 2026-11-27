@@ -3,7 +3,7 @@
    Cross-origin pose models are cached after the first successful load.
    Supabase is never cached. */
 
-const CACHE_NAME = "tennis-coach-v5";
+const CACHE_NAME = "tennis-coach-v6";
 const SHELL = [
   "./",
   "./index.html",
@@ -24,14 +24,14 @@ const SHELL = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL))
   );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+      Promise.all(keys.filter((key) => /^tennis-coach-v\d+$/.test(key) && key !== CACHE_NAME).map((key) => caches.delete(key)))
     ).then(() => self.clients.claim())
   );
 });
@@ -41,7 +41,8 @@ self.addEventListener("message", (event) => {
 });
 
 function isModel(url) {
-  return url.hostname === "cdn.jsdelivr.net" || url.hostname === "storage.googleapis.com";
+  return (url.hostname === "cdn.jsdelivr.net" && url.pathname.startsWith("/npm/@mediapipe/tasks-vision@")) ||
+    (url.hostname === "storage.googleapis.com" && url.pathname.startsWith("/mediapipe-models/pose_landmarker/"));
 }
 
 self.addEventListener("fetch", (event) => {
@@ -51,12 +52,12 @@ self.addEventListener("fetch", (event) => {
   if (url.protocol !== "http:" && url.protocol !== "https:") return;
   if (url.hostname.endsWith("supabase.co")) return;
 
-  if (url.origin === self.location.origin) {
+  if (url.origin === self.location.origin && url.href.startsWith(self.registration.scope)) {
     event.respondWith(networkFirst(request));
     return;
   }
   if (isModel(url)) {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(cacheFirst(request));
   }
 });
 
@@ -64,24 +65,23 @@ async function networkFirst(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
     const response = await fetch(request);
-    if (response && response.ok) cache.put(request, response.clone());
+    if (response.ok) await cache.put(request, response.clone()).catch(() => {});
     return response;
   } catch (err) {
-    const cached = await caches.match(request);
+    const cached = await cache.match(request);
     if (cached) return cached;
     if (request.mode === "navigate") {
-      return (await caches.match("./app.html")) || (await caches.match("./index.html"));
+      return (await cache.match("./app.html")) || (await cache.match("./index.html"));
     }
     throw err;
   }
 }
 
-async function staleWhileRevalidate(request) {
+async function cacheFirst(request) {
   const cache = await caches.open(CACHE_NAME);
-  const cached = await caches.match(request);
-  const fetching = fetch(request).then((response) => {
-    if (response && response.ok) cache.put(request, response.clone());
-    return response;
-  }).catch(() => cached);
-  return cached || fetching;
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (response.ok) await cache.put(request, response.clone()).catch(() => {});
+  return response;
 }
