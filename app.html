@@ -340,10 +340,10 @@
 </style>
 <link rel="stylesheet" href="theme.css">
 </head>
-<body>
+<body class="coach-app">
 
 <a class="skip" href="#main">Skip to content</a>
-<canvas id="rippleBg"></canvas>
+<canvas id="rippleBg" aria-hidden="true"></canvas>
 <script src="bg.js"></script>
 <header class="site-header">
   <a class="brand" href="index.html">
@@ -351,7 +351,6 @@
     LimeCourt
   </a>
   <div class="header-actions">
-    <p style="margin:0;">Shot-by-shot feedback, in the browser.</p>
     <button type="button" id="installBtn" style="display:none;">Install app</button>
     <button type="button" id="iosInstructBtn" class="secondary" style="display:none;">Add to home screen</button>
   </div>
@@ -371,7 +370,9 @@
   </div>
 </div>
 
-<div class="auth-bar" id="authBar">
+<details class="account-panel">
+  <summary>Account</summary>
+  <div class="auth-bar" id="authBar">
   <span id="loggedOutView">
     <label class="sr-only" for="authEmail">Email</label>
     <input type="email" id="authEmail" autocomplete="email" placeholder="Email">
@@ -385,7 +386,8 @@
     <span class="user-email" id="userEmailLabel"></span>
     <button type="button" class="secondary" id="signOutBtn">Sign out</button>
   </span>
-</div>
+  </div>
+</details>
 
 <nav id="navBar" aria-label="Sections">
   <button type="button" class="secondary" id="navAnalyze" data-tab="analyze">Analyze</button>
@@ -404,14 +406,20 @@
 
 <div id="tabAnalyze">
 
-  <div class="card">
+  <div class="page-heading">
+    <h2>Analyze a rally</h2>
+    <p>Upload or record a short clip to get shot-by-shot feedback.</p>
+  </div>
+  <div class="card capture-card">
     <div class="upload-grid">
       <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Upload a video">
+        <span class="capture-icon" aria-hidden="true">↑</span>
         <strong>Upload video</strong>
         <p>MP4, MOV, or WebM</p>
         <input type="file" id="fileInput" accept="video/*">
       </div>
       <div class="upload-zone" id="recordZone" role="button" tabindex="0">
+        <span class="capture-icon record-icon" aria-hidden="true"></span>
         <strong>Record now</strong>
         <p>Use your device camera</p>
       </div>
@@ -419,8 +427,8 @@
     <div class="controls" style="margin-top:12px;">
       <button type="button" class="secondary" id="loadSampleBtn">Preview a sample rally</button>
     </div>
-    <div style="margin-top:16px; font-size: 0.85rem; color: var(--muted); line-height: 1.6;">
-      <strong style="color: var(--text);">📹 For the most accurate analysis, film like this:</strong>
+    <details class="capture-tips">
+      <summary>Filming tips for a cleaner track</summary>
       <ul style="margin: 8px 0 0; padding-left: 20px;">
         <li><strong>Camera angle:</strong> side-on, around the net post, with one player large in the frame. A phone high behind the baseline can count swings, but contact and line calls stay low confidence.</li>
         <li><strong>Camera position:</strong> mount on a tripod or steady surface — handheld footage makes ball tracking much less reliable.</li>
@@ -429,7 +437,7 @@
         <li><strong>Clip length:</strong> upload short clips (a single rally or a few shots) rather than a full match — keeps analysis fast and accurate.</li>
         <li><strong>Background:</strong> avoid courts with yellow-green surfaces or backgrounds that closely match the ball color, since this can confuse ball tracking.</li>
       </ul>
-    </div>
+    </details>
   </div>
 
   <div class="card" id="recordCard" style="display:none;">
@@ -654,6 +662,7 @@
 <div id="tabPractice" style="display:none;"></div>
 
 <div id="tabDashboard" style="display:none;">
+  <div class="page-heading"><h2>Your progress</h2></div>
   <div class="card" id="dashboardLoggedOut" style="display:none;">
     <p style="color: var(--muted); margin:0;">Sign in to sync this dashboard across devices. What you analyze here is already saved in this browser.</p>
   </div>
@@ -680,9 +689,9 @@
     </div>
     <div class="card">
       <h3 style="margin-top:0;">🔀 Compare two sessions</h3>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-        <select id="compareA" style="padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.82rem;"></select>
-        <select id="compareB" style="padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.82rem;"></select>
+      <div class="compare-fields">
+        <select aria-label="First session" id="compareA" style="padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.82rem;"></select>
+        <select aria-label="Second session" id="compareB" style="padding:8px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.82rem;"></select>
       </div>
       <button id="runCompareBtn" style="padding:6px 12px; font-size:0.82rem;">Compare</button>
       <div id="compareResult" style="margin-top:14px; font-size:0.88rem;"></div>
@@ -691,16 +700,18 @@
 </div>
 
 <div id="tabCommunity" style="display:none;">
+  <div class="page-heading"><h2>Community</h2></div>
   <div class="card">
-    <h3 style="margin-top:0;">🌍 Community feed</h3>
+    <h3 style="margin-top:0;">Public sessions</h3>
     <p style="color: var(--muted); font-size:0.85rem;">Sessions players have chosen to share publicly.</p>
     <div id="communityFeed" style="margin-top:14px;">Loading...</div>
   </div>
 </div>
 
 <div id="tabLeaderboard" style="display:none;">
+  <div class="page-heading"><h2>Leaderboard</h2></div>
   <div class="card">
-    <h3 style="margin-top:0;">🏆 Leaderboard</h3>
+    <h3 style="margin-top:0;">Top speeds</h3>
     <p style="color: var(--muted); font-size:0.85rem;">Top speeds by shot type. Opt in from your Profile tab to appear here.</p>
     <div style="margin-top:14px;">
       <label class="toggle" style="margin-bottom:10px;">
@@ -719,12 +730,13 @@
 </div>
 
 <div id="tabProfile" style="display:none;">
+  <div class="page-heading"><h2>Your profile</h2></div>
   <div class="card" id="profileLoggedOut" style="display:none;">
     <p style="color: var(--muted); margin:0;">Your level and racket hand are saved on this device. Sign in if you also want them on your account.</p>
   </div>
   <div id="profileContent" style="display:none;">
     <div class="card">
-      <h3 style="margin-top:0;">Your profile</h3>
+      <h3 style="margin-top:0;">Player settings</h3>
       <p id="profileCloudNote" style="color:var(--muted); margin-top:0;"></p>
       <label style="display:block; margin-bottom:10px;">
         <div style="color:var(--muted); font-size:0.82rem; margin-bottom:4px;">Username</div>
@@ -774,8 +786,9 @@
 </div>
 
 <div id="tabAbout" style="display:none;">
+  <div class="page-heading"><h2>About LimeCourt</h2></div>
   <div class="card">
-    <h3 style="margin-top:0;">About LimeCourt</h3>
+    <h3 style="margin-top:0;">How the coach works</h3>
     <p style="color:var(--text); line-height:1.6;">
       A free, browser-based AI coach that analyzes your tennis footage frame by frame — detecting shots,
       estimating ball speed, spotting technique issues, and helping you track your progress over time.
@@ -1467,8 +1480,13 @@ function showTab(tab, sharedId = null) {
   document.querySelectorAll('#navBar button').forEach(btn => {
     const on = btn.dataset.tab === tab;
     btn.classList.toggle('is-active', on);
-    if (on) btn.setAttribute('aria-current', 'page');
-    else btn.removeAttribute('aria-current');
+    if (on) {
+      btn.setAttribute('aria-current', 'page');
+      const nav = btn.parentElement;
+      if (btn.offsetLeft < nav.scrollLeft || btn.offsetLeft + btn.offsetWidth > nav.scrollLeft + nav.clientWidth) {
+        nav.scrollLeft = btn.offsetLeft - 12;
+      }
+    } else btn.removeAttribute('aria-current');
   });
   if (location.hash !== '#' + tab) history.replaceState(null, '', '#' + tab);
   track('tab_view', { tab });
@@ -1492,7 +1510,7 @@ const dashboardContent = document.getElementById('dashboardContent');
 
 async function renderDashboard() {
   dashboardLoggedOut.style.display = currentUser ? 'none' : 'block';
-  dashboardContent.style.display = 'block';
+  dashboardContent.style.display = 'grid';
 
   const data = (await getMySessions()).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
@@ -1752,7 +1770,7 @@ async function loadCommunityFeed(sharedId = null) {
         <div class="comments-block" style="margin-top:10px;">
           <div class="comments-list" id="cmts-${s.id}"></div>
           <div style="display:flex; gap:6px; margin-top:6px;">
-            <input type="text" class="comment-input" data-session="${s.id}" placeholder="Add a comment..." style="flex:1; padding:6px 10px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.82rem;">
+            <input type="text" class="comment-input" aria-label="Write a comment" data-session="${s.id}" placeholder="Add a comment..." style="flex:1; padding:6px 10px; border-radius:6px; border:1px solid #2f4f35; background:#0d1b0f; color:var(--text); font-size:0.82rem;">
             <button class="comment-submit" data-session="${s.id}" style="padding:6px 12px; font-size:0.78rem;">Post</button>
           </div>
         </div>
@@ -1874,24 +1892,27 @@ async function renderPractice() {
     ? focusLine(focusSource.events)
     : 'Film a rally, or load the sample from Analyze, and this line will name the fault that repeats.';
   root.innerHTML = `
-    <div class="card">
+    <div class="page-heading">
       <div class="row-between">
-        <h3 style="margin:0;">Practice</h3>
+        <h2>Practice</h2>
         <span class="pill">${streak} day streak</span>
       </div>
       <p style="color:var(--muted);">${escapeHtml(focus)}</p>
     </div>
     <div class="card">
       <h3>Technique cues</h3>
+      <div class="technique-grid">
       ${TECHNIQUES.map(t => `
         <details class="tech-card">
           <summary><strong>${escapeHtml(t.title)}</strong></summary>
           <ul>${t.cues.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>
         </details>`).join('')}
+      </div>
     </div>
     <div class="card">
       <h3>Drills</h3>
       <p style="color:var(--muted); margin-top:0;">Suggested drills match faults that keep showing up. The rest of the book is always here.</p>
+      <div class="drill-grid">
       ${DRILLS.map(d => `
         <article class="drill-card ${doneToday.has(d.id) ? 'done' : ''}">
           <div class="row-between">
@@ -1902,6 +1923,7 @@ async function renderPractice() {
           <ol>${d.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>
           <button type="button" class="secondary drill-toggle" data-drill="${d.id}" aria-pressed="${doneToday.has(d.id)}">${doneToday.has(d.id) ? 'Done today' : 'Mark done today'}</button>
         </article>`).join('')}
+      </div>
     </div>
     <div class="card">
       <h3>This week</h3>
@@ -3411,7 +3433,7 @@ function finishAnalysis(speeds, shotCounts, motionSamples) {
     const avg = d.speeds.length ? Math.round(d.speeds.reduce((a,b)=>a+b,0) / d.speeds.length) : null;
     const grade = avg == null ? '—' : gradeSpeed(shot, avg);
     const consistency = calcConsistency(d.speeds);
-    return `<div style="display:grid; grid-template-columns: 1fr auto auto auto; gap:10px; align-items:center; background:#101d12; padding:10px 14px; border-radius:8px; margin-bottom:6px;">
+    return `<div class="report-row stroke-report">
       <span>${escapeHtml(shot)}</span>
       <span style="color:var(--muted); font-size:0.82rem;">${d.count} shots</span>
       <span style="color:var(--muted); font-size:0.82rem;">${consistency !== null ? consistency + '% consistent' : '—'}</span>
@@ -3545,6 +3567,11 @@ async function openCamera() {
 }
 
 recordZone.addEventListener('click', openCamera);
+recordZone.addEventListener('keydown', event => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  openCamera();
+});
 
 switchCameraBtn.addEventListener('click', async () => {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') return;
