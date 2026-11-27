@@ -342,6 +342,18 @@
   #clipHelp p { margin: 0 0 10px; }
   #clipHelp li + li { margin-top: 6px; }
   #clipHelp button { min-height: 44px; }
+  .nav-break { display: none; }
+  @media (max-width: 760px) {
+    .coach-app #navBar { flex-wrap: wrap; gap: 6px !important; overflow-x: visible; }
+    .coach-app #navBar button { flex: 1 1 29%; min-height: 44px; padding-inline: 4px !important; }
+    .coach-app #navBar button:nth-of-type(n + 4) { flex-basis: 21%; font-size: .75rem !important; }
+    .nav-break { display: block; flex-basis: 100%; height: 0; margin-top: -6px; }
+  }
+  #firstResult { margin: 16px 0 10px; padding: 16px; border: 1px solid var(--lime); border-radius: 12px; background: #16261b; }
+  #firstResult[hidden] { display: none; }
+  #firstResult h3, #firstResult p { margin: 0 0 10px; }
+  #firstResult details { margin-top: 10px; }
+  #replayMoment { min-height: 44px; }
   .match-details[hidden] { display: none; }
   .match-details:not([hidden]) {
     display: grid;
@@ -416,6 +428,7 @@
   <button type="button" class="secondary" id="navAnalyze" data-tab="analyze">Analyze</button>
   <button type="button" class="secondary" id="navPractice" data-tab="practice">Practice</button>
   <button type="button" class="secondary" id="navDashboard" data-tab="dashboard">Dashboard</button>
+  <span class="nav-break" aria-hidden="true"></span>
   <button type="button" class="secondary" id="navCommunity" data-tab="community">Community</button>
   <button type="button" class="secondary" id="navLeaderboard" data-tab="leaderboard">Leaderboard</button>
   <button type="button" class="secondary" id="navProfile" data-tab="profile">Profile</button>
@@ -555,10 +568,10 @@
     </div>
 
     <div class="calib-banner" id="calibBanner">
-      <strong>📏 Calibrate for real speed (one-time per video)</strong>
+      <strong>📏 Mark a court line to estimate ball speed</strong>
       <p style="color: var(--muted); margin: 8px 0;">
         Pick a court line you can see clearly, enter its real-world length, then click both ends of it on the paused video frame below.
-        This lets the app convert pixel motion into real mph.
+        Speed appears in mph when the ball is tracked clearly around a shot.
       </p>
       <div>
         Reference line:
@@ -578,7 +591,7 @@
       <div class="calib-points">
         Points placed: <span id="pointCount">0</span> / 2
         <button class="secondary" id="resetCalib" style="margin-left:10px; padding: 4px 10px; font-size: 0.78rem;">Reset points</button>
-        <button class="secondary" id="skipCalib" style="margin-left:6px; padding: 4px 10px; font-size: 0.78rem;">Skip (use rough estimate)</button>
+        <button class="secondary" id="skipCalib" style="margin-left:6px; padding: 4px 10px; font-size: 0.78rem;">Skip speed calibration</button>
       </div>
     </div>
 
@@ -640,7 +653,8 @@
       Keyboard shortcuts: <strong>Space</strong> play/pause · <strong>← →</strong> step frame · <strong>Shift + ← →</strong> jump 5s · <strong>F</strong> fullscreen
     </div>
 
-    <div id="analysisStatus" style="margin-top:10px; color: var(--muted); font-size: 0.85rem;"></div>
+    <section id="firstResult" aria-labelledby="firstResultTitle" hidden></section>
+    <div id="analysisStatus" role="status" style="margin-top:10px; color: var(--muted); font-size: 0.85rem;"></div>
 
     <div id="matchBoard" style="display:none; margin-top:16px;">
       <h4 style="margin:0 0 8px; color:var(--lime);">Match board</h4>
@@ -715,7 +729,7 @@
     <p style="color: var(--muted); font-size: 0.88rem; line-height:1.5;">
       Pose tracking uses MediaPipe in your browser. Ball tracking looks for a yellow-green ball
       against the court, so lighting and a side-on camera matter. Mark a real court line and speed
-      is in miles per hour. Skip that and the number is only a rough estimate. Notes come from
+      appears in mph only when a court line is marked and the ball is tracked clearly. Notes come from
       body position (contact point, elbow, rotation, knees, balance), not from a chat model.
       The ball can disappear on fast, blurry frames.
     </p>
@@ -981,7 +995,6 @@ import {
   courtHomography,
   findBounces,
   ballSpeedMph,
-  scaleFromBaseline,
   callBounces,
   sessionBoard,
   quietSpans,
@@ -1338,8 +1351,8 @@ async function exportSessionAsPDF(session) {
     session.match_opponent ? `Opponent: ${session.match_opponent}` : null,
     session.match_score ? `Score: ${session.match_score}` : null,
     `Total shots: ${session.shot_count}`,
-    `Average speed: ${session.avg_speed} mph`,
-    `Top speed: ${session.top_speed} mph`,
+    `Average speed: ${session.avg_speed > 0 ? session.avg_speed + ' mph' : 'not measured'}`,
+    `Top speed: ${session.top_speed > 0 ? session.top_speed + ' mph' : 'not measured'}`,
     `Most-used shot: ${session.main_shot}`
   ].filter(Boolean);
   summaryLines.forEach(line => { doc.text(line, 50, y); y += 16; });
@@ -1551,10 +1564,6 @@ function showTab(tab, sharedId = null) {
     btn.classList.toggle('is-active', on);
     if (on) {
       btn.setAttribute('aria-current', 'page');
-      const nav = btn.parentElement;
-      if (btn.offsetLeft < nav.scrollLeft || btn.offsetLeft + btn.offsetWidth > nav.scrollLeft + nav.clientWidth) {
-        nav.scrollLeft = btn.offsetLeft - 12;
-      }
     } else btn.removeAttribute('aria-current');
   });
   if (location.hash !== '#' + tab) history.replaceState(null, '', '#' + tab);
@@ -2385,11 +2394,7 @@ function drawBallTrail(upTo) {
 }
 
 function trustedScale() {
-  if (pxPerFoot) return pxPerFoot;
-  if (courtCorners.length === 4 && courtConfidence === "medium") {
-    return scaleFromBaseline(courtCorners, overlay.width, overlay.height);
-  }
-  return null;
+  return Number.isFinite(pxPerFoot) && pxPerFoot >= 2 ? pxPerFoot : null;
 }
 
 // ---------- Comparison (Dashboard) ----------
@@ -2621,7 +2626,9 @@ function updateLineScale() {
     return;
   }
   pxPerFoot = pixels / feet;
-  analysisStatus.textContent = `Calibrated: ${pxPerFoot.toFixed(1)} px/ft. Ready to analyze.`;
+  analysisStatus.textContent = trustedScale()
+    ? 'Court line marked. Speed will appear when the ball track is clear.'
+    : 'That line is too small in the frame. Reset the points and choose a court line that spans more of the image.';
 }
 
 resetCalibBtn.addEventListener('click', () => {
@@ -2791,6 +2798,7 @@ function resetClipReview() {
   window._board = null;
   document.getElementById('courtCalibStatus').textContent = '';
   document.getElementById('reportCard').replaceChildren();
+  document.getElementById('firstResult').hidden = true;
   for (const id of ['ralliesWrap', 'heatmapWrap', 'matchBoard']) {
     document.getElementById(id).style.display = 'none';
   }
@@ -3030,6 +3038,7 @@ analyzeBtn.addEventListener('click', async () => {
   analysisMuted = video.muted;
   analyzeBtn.disabled = false;
   analyzeBtn.textContent = "Stop";
+  document.getElementById('firstResult').hidden = true;
   analyzing = true;
   analysisAbort = false;
   events = [];
@@ -3427,21 +3436,28 @@ async function runSteppedAnalysis(details) {
   speeds.length = 0;
   events.forEach(e => { if (e.speedEst != null) speeds.push(e.speedEst); });
   const reachedEnd = video.ended;
-  const featured = events.find(e => e.type === 'Serve / Overhead') || events[0];
-  if (featured) await seekVideo(featured.time);
+  const featured = firstCoachingMoment(events);
+  if (featured) await seekVideo(featured.shot.time);
   if (gen !== analysisGen) return;
   if (analysisAbort) {
     finishStoppedAnalysis();
     return;
   }
   finishAnalysis(speeds, shotCounts, motionSamples, details);
+  renderFirstResult(featured);
   const clipped = duration - limit > 0.4 && !reachedEnd && nextT >= limit - 0.03;
   const noun = events.length === 1 ? 'shot' : 'shots';
   let status = `Analysis complete — ${events.length} ${noun}. The body was visible on ${poseFrames} frames.`;
   if (!poseFrames) status = 'No player was visible. Step back so the whole body is in frame, then analyze again.';
   else if (!events.length) status = `The player is in frame (${poseFrames} frames) but no full swing stood out. Include the whole stroke, not just the ready position.`;
-  if (!trustedScale()) status += ' Mark a court line if you want mph.';
-  else if (events.length && !speeds.length) status += ' The ball itself was not tracked, so mph is left blank instead of guessing from the racket.';
+  if (!scale) status += ' Speed stays blank until you mark both ends of a court line.';
+  else if (events.length && !speeds.length) {
+    const enoughPoints = events.some(shot => ballTrack.filter(point => Math.abs(point.t - shot.time) <= 0.18).length >= 3);
+    status += enoughPoints
+      ? ' Speed is blank because movement near contact was too inconsistent for a reliable reading.'
+      : ' Speed is blank because the ball was visible in too few frames near contact.';
+    status += ' Film one rally from a steady phone near the net post so the ball takes up more of the frame.';
+  }
   if (clipped) status += ` Only the first ${Math.round(limit)}s were read — trim the clip to the rally you care about.`;
   const recording = window.__tcTiming.screenRecording;
   if (recording && (recording.letterbox || recording.greenOverlay)) {
@@ -3453,6 +3469,52 @@ async function runSteppedAnalysis(details) {
   const filters = document.getElementById("shotFilters");
   if (filters) filters.hidden = events.length === 0;
   paintShotList();
+}
+
+function firstCoachingMoment(shots) {
+  const cues = [
+    [/contact looks late/i, 'Backhand', 'Turn as the ball crosses the net.', 'prepare'],
+    [/contact looks late/i, 'Forehand', 'Meet the ball in front of your hip.', 'contact'],
+    [/contact looks low|elbow is still bent/i, 'Serve / Overhead', 'Toss in front and reach up through contact.', 'toss'],
+    [/swing looks long/i, 'Volley', 'Use a short punch and step forward.', 'punch'],
+    [/off-balance/i, null, 'Stay centered over your feet and hold the finish.', 'freeze']
+  ];
+  const reliable = shots.filter(shot => !/low confidence/i.test(shot.note || ''));
+  for (const shot of reliable) {
+    const match = cues.find(([pattern, stroke]) => (!stroke || stroke === shot.type) && pattern.test(shot.note || ''));
+    if (match) return { shot, cue: match[2], drillId: match[3] };
+  }
+  const shot = reliable[0] || shots[0];
+  if (!shot) return null;
+  const strokeCue = cues.find(([, stroke]) => stroke === shot.type) || cues[cues.length - 1];
+  return { shot, cue: strokeCue[2], drillId: strokeCue[3] };
+}
+
+function renderFirstResult(moment) {
+  const card = document.getElementById('firstResult');
+  if (!moment) {
+    card.hidden = true;
+    return;
+  }
+  const { shot, cue, drillId } = moment;
+  const drill = DRILLS.find(item => item.id === drillId);
+  const tenths = Math.round(shot.time * 10);
+  const minutes = Math.floor(tenths / 600);
+  const seconds = ((tenths % 600) / 10).toFixed(1).padStart(4, '0');
+  card.innerHTML = `
+    <h3 id="firstResultTitle">Start here</h3>
+    <p><button type="button" class="secondary" id="replayMoment">Review ${minutes}:${seconds} · ${escapeHtml(shot.type)}</button></p>
+    <p><strong>Practice cue</strong> ${escapeHtml(cue)}</p>
+    <details><summary>${escapeHtml(drill.title)} · ${drill.minutes} min</summary>
+      <ol>${drill.steps.map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol>
+    </details>`;
+  card.querySelector('#replayMoment').addEventListener('click', () => {
+    video.pause();
+    video.currentTime = shot.time;
+    video.scrollIntoView({ block: 'center' });
+  });
+  card.hidden = false;
+  if (tabAnalyze.style.display !== 'none') card.scrollIntoView({ block: 'nearest' });
 }
 
 function paintShotList() {
