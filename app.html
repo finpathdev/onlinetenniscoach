@@ -663,7 +663,7 @@
         Show coaching pop-ups
       </label>
       <label class="toggle">
-        <input type="checkbox" id="skeletonToggle" checked>
+        <input type="checkbox" id="skeletonToggle">
         Show pose skeleton
       </label>
       <label class="toggle">
@@ -2397,7 +2397,7 @@ function renderMatchBoard() {
     btn.addEventListener("click", () => {
       video.currentTime = Number(btn.dataset.t);
       video.pause();
-      drawBallTrail(video.currentTime);
+
     });
   });
   board.style.display = events.length || (window._bounces || []).length ? "block" : "none";
@@ -2416,24 +2416,6 @@ function refreshCourtReads() {
   if (wrap) wrap.style.display = courtCorners.length === 4 || window._bounces.length || events.some(e => e.ballX != null) ? 'block' : 'none';
   renderCourtHeatmap();
   renderMatchBoard();
-}
-
-function drawBallTrail(upTo) {
-  if (!ballCanvas.width) return;
-  ballCtx.clearRect(0, 0, ballCanvas.width, ballCanvas.height);
-  const pts = ballTrack.filter(p => p.t <= upTo + 0.04);
-  if (pts.length < 2) return;
-  ballCtx.strokeStyle = "rgba(214,239,74,0.9)";
-  ballCtx.lineWidth = 3;
-  ballCtx.lineJoin = "round";
-  ballCtx.beginPath();
-  pts.forEach((p, i) => { if (i) ballCtx.lineTo(p.x, p.y); else ballCtx.moveTo(p.x, p.y); });
-  ballCtx.stroke();
-  const last = pts[pts.length - 1];
-  ballCtx.fillStyle = "#ffe14d";
-  ballCtx.beginPath();
-  ballCtx.arc(last.x, last.y, 7, 0, Math.PI * 2);
-  ballCtx.fill();
 }
 
 function trustedScale() {
@@ -2599,7 +2581,7 @@ document.getElementById("shotFilters").addEventListener("click", (event) => {
 });
 
 video.addEventListener("timeupdate", () => {
-  if (!analyzing && ballTrack.length) drawBallTrail(video.currentTime);
+
   if (!skipQuiet || video.paused || analyzing) return;
   const gap = (window._quiet || []).find(g => video.currentTime > g.start + 0.05 && video.currentTime < g.end - 0.08);
   if (gap) video.currentTime = gap.end;
@@ -2709,7 +2691,7 @@ overlay.addEventListener('mousemove', (e) => {
 
   if (!calibPreviewLine) {
     calibPreviewLine = document.createElement('div');
-    calibPreviewLine.style.cssText = 'position:absolute; height:2px; background:var(--lime); pointer-events:none; opacity:0.6; transform-origin: 0 0; box-shadow: 0 0 4px rgba(196,229,56,0.6);';
+    calibPreviewLine.style.cssText = 'position:absolute; height:2px; background:#e5e7eb; pointer-events:none; opacity:0.7; transform-origin: 0 0;';
     videoWrap.appendChild(calibPreviewLine);
   }
   calibPreviewLine.style.left = p1DomX + 'px';
@@ -2737,19 +2719,8 @@ overlay.addEventListener('click', (e) => {
   calibDots.push(dot);
 
   if (calibPoints.length === 2) {
-    // Solid final line between the two points, replacing the preview
-    if (calibPreviewLine) { calibPreviewLine.remove(); calibPreviewLine = null; }
-    const p1x = (calibPoints[0].x / overlay.width) * rect.width;
-    const p1y = (calibPoints[0].y / overlay.height) * rect.height;
-    const p2x = (calibPoints[1].x / overlay.width) * rect.width;
-    const p2y = (calibPoints[1].y / overlay.height) * rect.height;
-    const dxL = p2x - p1x, dyL = p2y - p1y;
-    const length = Math.sqrt(dxL*dxL + dyL*dyL);
-    const angle = Math.atan2(dyL, dxL) * 180 / Math.PI;
-    const line = document.createElement('div');
-    line.style.cssText = `position:absolute; left:${p1x}px; top:${p1y}px; width:${length}px; height:3px; background:var(--lime); pointer-events:none; opacity:0.9; transform-origin: 0 0; transform: rotate(${angle}deg); box-shadow: 0 0 6px rgba(196,229,56,0.7);`;
-    videoWrap.appendChild(line);
-    calibDots.push(line);
+    calibPreviewLine?.remove();
+    calibPreviewLine = null;
 
     updateLineScale();
     updateOverlayPointer();
@@ -2859,7 +2830,7 @@ function resetClipReview() {
   document.getElementById('publishStatus').textContent = '';
   lastSavedSessionId = null;
   playerColorSig = null;
-  lastTrackedPos = null;
+  lastTrackedPos = taggedPosition = null;
   tagMode = false;
   updateOverlayPointer();
   if (document.getElementById('playerIdBanner')) document.getElementById('playerIdBanner').style.display = 'block';
@@ -3234,10 +3205,10 @@ function seekVideo(time) {
 }
 
 function pickPose(result) {
-  const poses = (result && result.landmarks) || [];
+  const poses = (result?.landmarks || []).filter(pose =>
+    [11, 12, 23, 24].every(index => pose[index] && (pose[index].visibility ?? 1) >= 0.4)
+  );
   if (!poses.length) return null;
-  const nearest = (list) => list.slice().sort((a, b) => ((b[23].y + b[24].y) - (a[23].y + a[24].y)))[0];
-  if (poses.length === 1) return lastTrackedPos ? poses[0] : nearest(poses);
   if (document.getElementById('multiPlayerToggle').checked) {
     const hipY = (p) => ((p[23] && p[23].y) || 0) + ((p[24] && p[24].y) || 0);
     const sorted = [...poses].sort((a, b) => hipY(b) - hipY(a));
@@ -3252,13 +3223,18 @@ function pickPose(result) {
       const d = Math.hypot(cx - lastTrackedPos.x, cy - lastTrackedPos.y);
       if (d < bestD) { best = p; bestD = d; }
     });
-    if (bestD > 0.35) return null;
+    if (bestD > 0.20) return null;
     const cx = (best[11].x + best[12].x + best[23].x + best[24].x) / 4;
     const cy = (best[11].y + best[12].y + best[23].y + best[24].y) / 4;
     lastTrackedPos = { x: cx * 0.35 + lastTrackedPos.x * 0.65, y: cy * 0.35 + lastTrackedPos.y * 0.65 };
     return best;
   }
-  return poses[0];
+  const nearest = poses.reduce((a, b) => b[23].y + b[24].y > a[23].y + a[24].y ? b : a);
+  lastTrackedPos = {
+    x: (nearest[11].x + nearest[12].x + nearest[23].x + nearest[24].x) / 4,
+    y: (nearest[11].y + nearest[12].y + nearest[23].y + nearest[24].y) / 4
+  };
+  return nearest;
 }
 
 function commitStrokes(samples, speeds, shotCounts) {
@@ -3357,14 +3333,17 @@ async function runSteppedAnalysis(details) {
   const motionSamples = [];
   let poseFrames = 0;
   let prev = null;
-  let bestShot = null;
-  let timestamp = 1;
   const poseSamples = [];
   ballHistory = [];
 
   const screen = frameLooksLikeScreenRecording();
   window.__tcTiming.screenRecording = screen;
-  video.playbackRate = 4;
+  video.playbackRate = 1.5;
+  lastTrackedPos = taggedPosition;
+  calibDots.forEach(dot => dot.remove());
+  calibDots = [];
+  calibPreviewLine?.remove();
+  calibPreviewLine = null;
   video.muted = true;
   await seekVideo(0);
   if (!analysisAbort && gen === analysisGen) await video.play();
@@ -3385,8 +3364,8 @@ async function runSteppedAnalysis(details) {
     stalls = 0;
     video.pause();
     const t = video.currentTime;
-    let result = detectFrame(false);
-    if (lastTrackedPos && (!(result.landmarks && result.landmarks.length))) result = detectFrame(true);
+    let lm = pickPose(detectFrame(false));
+    if (!lm && lastTrackedPos) lm = pickPose(detectFrame(true));
     nextT = t + step;
     ctx.clearRect(0, 0, overlay.width, overlay.height);
     ballCtx.clearRect(0, 0, ballCanvas.width, ballCanvas.height);
@@ -3408,13 +3387,9 @@ async function runSteppedAnalysis(details) {
         const dtb = b.time - a.time;
         if (dtb > 0) ballMph = pxToMph(Math.hypot(b.x - a.x, b.y - a.y) / dtb);
       }
-      ballCtx.fillStyle = '#ffe14d';
-      ballCtx.beginPath();
-      ballCtx.arc(ball.x, ball.y, 8, 0, Math.PI * 2);
-      ballCtx.fill();
     }
-    const lm = pickPose(result);
-    if (lm && lm[16] && lm[12] && lm[24]) {
+    const wristIndex = currentHandedness() === 'left' ? 15 : 16;
+    if (lm?.[wristIndex] && (lm[wristIndex].visibility ?? 1) >= 0.45) {
       poseFrames++;
       const righty = currentHandedness() !== 'left';
       const wrist = righty ? lm[16] : lm[15];
@@ -3427,11 +3402,13 @@ async function runSteppedAnalysis(details) {
       const knee = righty ? lm[26] : lm[25];
       const ankle = righty ? lm[28] : lm[27];
       const torso = Math.hypot(shoulder.x - hip.x, shoulder.y - hip.y) || 0.05;
-      if (prev) {
+      const x = wrist.x - shoulder.x;
+      const y = wrist.y - shoulder.y;
+      if (prev && t > prev.t && t - prev.t <= 0.24) {
         const dt = t - prev.t;
-        const dx = (wrist.x - prev.x) * overlay.width;
-        const dy = (wrist.y - prev.y) * overlay.height;
-        const normSpeed = dt > 0 ? Math.hypot(wrist.x - prev.x, wrist.y - prev.y) / dt : 0;
+        const dx = (x - prev.x) * overlay.width;
+        const dy = (y - prev.y) * overlay.height;
+        const normSpeed = Math.hypot(x - prev.x, y - prev.y) / dt;
         const bodySpeed = normSpeed / torso;
         motionSamples.push({ time: t, motion: bodySpeed });
         const visible = wrist.visibility == null || wrist.visibility >= 0.4;
@@ -3439,13 +3416,14 @@ async function runSteppedAnalysis(details) {
           t, wrist, otherWrist, elbow, shoulder, offShoulder, hip, offHip,
           knee, ankle, nose: lm[0], dx, dy, bodySpeed, normSpeed, ballMph, ball, visible, lm
         });
-        if (!bestShot || bodySpeed > bestShot.bodySpeed) bestShot = { time: t, bodySpeed };
       }
-      prev = { t, x: wrist.x, y: wrist.y };
+      prev = { t, x, y };
       if (skeletonToggle.checked && drawingUtils) {
-        drawingUtils.drawLandmarks(lm, { radius: 3, color: '#d6ef4a' });
-        drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#d6ef4a', lineWidth: 2 });
+        drawingUtils.drawLandmarks(lm, { radius: 3, color: '#b8e4f4' });
+        drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: '#b8e4f4', lineWidth: 2 });
       }
+    } else {
+      prev = null;
     }
     if (poseSamples.length > 0 && poseSamples.length % 8 === 0) {
       events.length = 0;
@@ -4011,6 +3989,7 @@ function colorDistance(a, b) {
 }
 
 let tagMode = false;
+let taggedPosition = null;
 let lastTrackedPos = null; // {x, y} in normalized coords, updated each frame during analysis
 
 async function startTagging() {
@@ -4041,7 +4020,7 @@ async function handleTagClick(e) {
   hctx.drawImage(video, 0, 0);
   const imgData = hctx.getImageData(0, 0, hidden.width, hidden.height);
 
-  const result = detectFrame();
+  const result = detectFrame(true);
   if (!result.landmarks || result.landmarks.length === 0) {
     status.textContent = 'No people detected in this frame. Scrub to a clearer frame and click again.';
     return;
@@ -4067,7 +4046,8 @@ async function handleTagClick(e) {
   }
 
   playerColorSig = sig;
-  lastTrackedPos = { x: best.cx / video.videoWidth, y: best.cy / video.videoHeight };
+  taggedPosition = { x: best.cx / video.videoWidth, y: best.cy / video.videoHeight };
+  lastTrackedPos = taggedPosition;
 
   // flash a highlight over the selected pose so user sees it worked
   ctx.clearRect(0, 0, overlay.width, overlay.height);
@@ -4086,7 +4066,7 @@ document.addEventListener('click', (e) => {
   if (e.target.id === 'startTagBtn') startTagging();
   if (e.target.id === 'skipPlayerIdBtn') {
     playerColorSig = null;
-    lastTrackedPos = null;
+    lastTrackedPos = taggedPosition = null;
     document.getElementById('playerIdBanner').style.display = 'none';
     document.getElementById('playerIdStatus').textContent = 'Skipped.';
   }
